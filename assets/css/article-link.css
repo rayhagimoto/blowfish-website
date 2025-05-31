@@ -1,0 +1,6 @@
+/* Custom CSS for article link elements */
+
+/* Styles for the card.html layout */
+.dark .article-link-title:hover {
+    color: rgb(var(--color-primary-500)) !important;
+} 
