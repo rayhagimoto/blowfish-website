@@ -28,7 +28,7 @@ showAppearanceSwitcher = true
 showScrollToTop = true
 
 [homepage]
-layout = "basic"
+layout = "background"
 homepageImage = "DSC04588.jpg"
 showRecent = false
 showRecentItems = 5
