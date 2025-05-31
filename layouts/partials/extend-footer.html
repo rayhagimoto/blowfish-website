@@ -1,0 +1,19 @@
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const articleLinks = document.querySelectorAll('a.min-w-full'); // Select the article link elements
+
+    articleLinks.forEach(link => {
+      const cardDiv = link.querySelector('.min-h-full.rounded.overflow-hidden'); // Get the card div within the link
+
+      if (cardDiv) {
+        link.addEventListener('mouseenter', () => {
+          cardDiv.classList.add('is-hovered');
+        });
+
+        link.addEventListener('mouseleave', () => {
+          cardDiv.classList.remove('is-hovered');
+        });
+      }
+    });
+  });
+</script> 
