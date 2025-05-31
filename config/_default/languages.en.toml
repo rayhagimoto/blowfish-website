@@ -11,6 +11,8 @@ rtl = false
 dateFormat = "2 January 2006"
 
 [params.author]
+name = "Ray Hagimoto"
+email = "rayhagimoto@gmail.com"
 image = "img/profile.jpeg"
 bio = "a little about me" 
 links = [
