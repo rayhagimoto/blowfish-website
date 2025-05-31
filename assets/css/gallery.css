@@ -1,3 +1,23 @@
+.gallery-page-header {
+  text-align: center;
+  font-weight: bold;
+  font-size: 42px;
+  margin-bottom: 30px;
+  animation: fadeIn 1s both, slideInUp 1s both;
+  animation-delay: 0.5s;
+}
+
+/* These rules target parent containers to override theme's max-width */
+body.gallery-page-full-width main#main-content.grow {
+    max-width: none !important;
+    padding: 0 !important;
+}
+
+body.gallery-page-full-width .relative.flex.flex-col.grow {
+    max-width: none !important;
+    padding: 0 !important;
+}
+
 /* .gallery-page-header {
   text-align: center;
   font-weight: bold;
