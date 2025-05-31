@@ -20,7 +20,8 @@
     height: 100%;
     background-color: rgb(var(--color-primary-500));
     transition: opacity 1s ease;
-    z-index: 0;
+    /* Overlay z-index */
+    z-index: 1;
     opacity: 0;
 }
 
@@ -29,10 +30,16 @@
     transition: opacity 1s ease;
 }
 
-/* Ensure content stays above the sliding background */
-.min-h-full.rounded.overflow-hidden > * {
-    position: relative;
-    z-index: 1;
+/* Set z-index for the thumbnail image container */
+.min-h-full.rounded.overflow-hidden .thumbnail_card {
+    position: relative; /* Ensure positioning context for z-index */
+    z-index: 0; /* Place the thumbnail behind the overlay */
+}
+
+/* Ensure other content stays above the sliding background */
+.min-h-full.rounded.overflow-hidden > *:not(.thumbnail_card) {
+    position: relative; /* Ensure positioning context for z-index */
+    z-index: 2; /* Place other content above the overlay */
 }
 
 /* Temporary rule to check if .is-hovered class is applied */
