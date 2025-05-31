@@ -1,6 +1,42 @@
 /* Custom CSS for article link elements */
 
 /* Styles for the card.html layout */
-.dark .article-link-title:hover {
-    color: rgb(var(--color-primary-500)) !important;
+.article-link-title:hover {
+    color: rgb(var(--color-primary-500));
 } 
+
+/* Background hover effect */
+.min-h-full.rounded.overflow-hidden {
+    position: relative;
+    overflow: hidden;
+}
+
+.min-h-full.rounded.overflow-hidden::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(var(--color-primary-500));
+    transition: opacity 1s ease;
+    z-index: 0;
+    opacity: 0;
+}
+
+.min-h-full.rounded.overflow-hidden.is-hovered::before {
+    opacity: 1;
+    transition: opacity 1s ease;
+}
+
+/* Ensure content stays above the sliding background */
+.min-h-full.rounded.overflow-hidden > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Temporary rule to check if .is-hovered class is applied */
+.min-h-full.rounded.overflow-hidden.is-hovered::before {
+    opacity: 1;
+    transition: opacity 1s ease;
+}
