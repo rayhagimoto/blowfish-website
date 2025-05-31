@@ -18,7 +18,7 @@ rssnext = { }
 defaultBackgroundImage = "DSC04588.jpg"
 
 [header]
-layout = "basic"
+layout = "fixed-fill-blur"
 
 [footer]
 showMenu = true
@@ -28,15 +28,15 @@ showAppearanceSwitcher = true
 showScrollToTop = true
 
 [homepage]
-layout = "background"
-homepageImage = "DSC04588.jpg"
-showRecent = false
-showRecentItems = 5
-showMoreLink = false
-showMoreLinkDest = "/posts/"
-cardView = false
-cardViewScreenWidth = false
-layoutBackgroundBlur = true
+  layout = "background" # valid options: page, profile, hero, card, background, custom
+  homepageImage = "img/background.jpg" # used in: hero, and card
+  showRecent = true
+  showRecentItems = 6
+  showMoreLink = true
+  showMoreLinkDest = "/posts/"
+  cardView = true
+  cardViewScreenWidth = false
+  layoutBackgroundBlur = true # only used when layout equals background
 
 [article]
 showDate = true
