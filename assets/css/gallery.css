@@ -2,7 +2,7 @@
   text-align: center;
   font-weight: bold;
   font-size: 42px;
-  margin-bottom: 80px;
+  margin-bottom: 30px;
   animation: fadeIn 1s both, slideInUp 1s both;
   animation-delay: 0.5s;
 }
