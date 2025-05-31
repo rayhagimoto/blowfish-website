@@ -1,0 +1,45 @@
+:root {
+    /* Neutrals: white → light grey → deep grey → near-black */
+    --color-neutral: 255, 255, 255;
+    --color-neutral-50: 255, 255, 255;
+    /* pure white */
+    --color-neutral-100: 255, 255, 255;
+    --color-neutral-200: 220, 220, 220;
+    /* light grey (optional for borders) */
+    --color-neutral-300: 80, 80, 80;
+    /* heading or subdued text */
+    --color-neutral-400: 40, 40, 40;
+    /* surface */
+    --color-neutral-500: 30, 30, 30;
+    /* card background */
+    --color-neutral-600: 20, 20, 20;
+    /* body background */
+    --color-neutral-700: 15, 15, 15;
+    --color-neutral-800: 10, 10, 10;
+    --color-neutral-900: 5, 5, 5;
+    /* deepest background */
+
+    /* Primary: Earthy brown/ochre */
+    --color-primary-50: 252, 247, 241;
+    --color-primary-100: 243, 230, 215;
+    --color-primary-200: 224, 197, 153;
+    --color-primary-300: 196, 151, 94;
+    --color-primary-400: 168, 120, 63;
+    --color-primary-500: 140, 94, 46;
+    --color-primary-600: 112, 75, 37;
+    --color-primary-700: 84, 56, 28;
+    --color-primary-800: 56, 37, 19;
+    --color-primary-900: 28, 18, 9;
+
+    /* Secondary: Earthy mossy greens */
+    --color-secondary-50: 245, 250, 245;
+    --color-secondary-100: 220, 235, 220;
+    --color-secondary-200: 183, 215, 183;
+    --color-secondary-300: 138, 186, 138;
+    --color-secondary-400: 92, 158, 92;
+    --color-secondary-500: 63, 128, 63;
+    --color-secondary-600: 46, 100, 46;
+    --color-secondary-700: 35, 75, 35;
+    --color-secondary-800: 24, 50, 24;
+    --color-secondary-900: 12, 25, 12;
+}

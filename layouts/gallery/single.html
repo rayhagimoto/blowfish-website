@@ -1,0 +1,48 @@
+{{ define "main" }}
+<section class="main">
+    <div class="container">
+        <div class="flex flex-wrap -mx-2" data-masonry='{"percentPosition": true }'>
+            {{- $images := .Resources.ByType "image" -}}
+            {{ range $images }}
+            <div class="w-1/2 sm:w-1/2 md:w-1/3 lg:w-1/6 px-2 pb-3 gallery-item">
+                <img src="{{ .RelPermalink }}" height="{{ .Height }}" width="{{ .Width }}" alt="Gallery Image" class="block w-full h-auto">
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</section>
+<script>
+    window.addEventListener('load', function () {
+        console.log('Window loaded.');
+        var grid = document.querySelector('[data-masonry]');
+        
+        if (grid) {
+            console.log('Processing grid:', grid);
+            var masonry = new Masonry(grid, {
+                itemSelector: 'div.px-2.pb-3.gallery-item',
+                percentPosition: true
+            });
+            console.log('Masonry initialized.');
+
+            // Use layoutComplete event to trigger fade-in after Masonry is done
+            masonry.on( 'layoutComplete', function() {
+                console.log('Masonry layoutComplete event fired.');
+                var galleryItems = grid.querySelectorAll('.gallery-item');
+                console.log('Found gallery items for fading:', galleryItems.length);
+                galleryItems.forEach(function (item, index) {
+                    // Calculate and set staggered animation delay
+                    var delay = index * 0.5; // 0.5 seconds delay per item
+                    item.style.animationDelay = delay + 's';
+
+                    item.classList.add('is-loaded'); // Add is-loaded class to trigger fade-in
+                    console.log('Added is-loaded to:', item, 'with delay:', delay, 's');
+                });
+            });
+
+            // Trigger initial layout after window is loaded
+            masonry.layout();
+        }
+    });
+</script>
+{{ end }}
+

@@ -1,0 +1,22 @@
+{{ define "main" }}
+<!-- stylesheet from https://animate.style -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.0.0/animate.min.css" />
+
+<link rel="stylesheet" href="/css/gallery.css">
+
+<style>
+  .gallery-page-header {
+    text-align: center;
+    font-weight: bold;
+    font-size: 42px;
+    margin-bottom: 80px;
+    animation: fadeIn 1s both, slideInUp 1s both;
+    animation-delay: 0.5s;
+  }
+</style>
+
+<h1 class="gallery-page-header">Gallery</h1>
+{{ $images := .Resources.ByType "image" }}
+
+{{ .Content }}
+{{ end }}

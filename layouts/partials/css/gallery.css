@@ -1,0 +1,21 @@
+.gallery-header {
+  text-align: center;
+  font-weight: bold;
+  font-size: 42px;
+  animation: fadeIn 1s both, slideInUp 1s both;
+  animation-delay: 0.5s;
+  margin-bottom: 80px;
+}
+
+.gallery.full-width-gallery {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 50px !important;
+  padding-right: 50px !important;
+  box-sizing: border-box !important; /* Include padding in the element's total width and height */
+}
+
+.gallery img {
+  opacity: 0;
+  animation: fadeIn 2s forwards;
+} 
