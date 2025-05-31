@@ -44,7 +44,7 @@
 </script>
 {{ end }}
 
-<div class="py-10">
+<!-- <div class="py-10">
   <div class="grid grid-cols-3" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));">
     <section class="col-span-1" style="grid-column: span 1 / span 1;">
       {{ partial "author-home.html" . }}
@@ -59,9 +59,7 @@
 
 <p>A copy of my resume can be found here.</p>
 </section></section>
-  </div>
+  </div> -->
 </div>
 
-<section>
-    {{ partial "recent-articles/main.html" . }}
-</section>
+{{ .Content }}
