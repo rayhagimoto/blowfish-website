@@ -10,5 +10,12 @@ isoCode = "en"
 rtl = false
 dateFormat = "2 January 2006"
 
-["params.author"]
-image = "profile.jpeg"
+[params.author]
+image = "img/profile.jpeg"
+bio = "a little about me" 
+links = [
+    { linkedin = "https://linkedin.com/in/ray-hagimoto" },
+    { github = "https://github.com/rayhagimoto" },
+    { inspirehep = "https://inspirehep.net/authors/2136892" }
+]
+
