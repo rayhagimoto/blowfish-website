@@ -1,31 +1,8 @@
 {{ define "main" }}
+{{ $styles := resources.Get "css/gallery.css" | minify }}
+<link rel="stylesheet" href="{{ $styles.Permalink }}" media="screen">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.0.0/animate.min.css" />
-<!-- <link rel="stylesheet" href="/css/gallery.css"> -->
 
-<style>
-    .gallery-page-header {
-        text-align: center;
-        font-weight: bold;
-        font-size: 42px;
-        margin-bottom: 30px;
-        animation: fadeIn 4s both, slideInUp 4s both;
-        animation-delay: 0.5s;
-    }
-</style>
-<style>
-    .gallery-text {
-        text-align: center;
-        /* font-weight: bold; */
-        font-size: 14px;
-        margin-bottom: 30px;
-        animation: fadeIn 4s both, slideInUp 4s both;
-        animation-delay: 0.5s;
-        max-width: 800px;
-        margin-left: auto;
-        margin-right: auto;
-        line-height: 1.6;
-    }
-</style>
 
 <h1 class="gallery-page-header text-primary-400 dark:text-primary-50">{{ .Title }}</h1>
 <div class="gallery-text"> 
