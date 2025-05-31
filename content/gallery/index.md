@@ -4,14 +4,5 @@ date: '2025-05-30T17:15:10-05:00'
 draft: false
 ---
 
-{{< gallery >}}
-    <img src="images/01.jpg", width="11%">
-    <img src="images/01.jpg", width="11%">
-    <img src="images/01.jpg", width="11%">
-    <img src="images/01.jpg", width="11%">
-    <img src="images/01.jpg", width="11%">
-    <img src="images/01.jpg", width="11%">
-    <img src="images/01.jpg", width="11%">
-    <img src="images/01.jpg", width="11%">
-    <img src="images/01.jpg", width="11%">
-{{< /gallery >}}
+I have been doing amateur photography since 2014. Here are some pictures from my travels to Singapore, Japan, England,
+and Denmark in 2025.
