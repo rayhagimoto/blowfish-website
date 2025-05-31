@@ -1,10 +1,10 @@
 .gallery-page-header {
-  text-align: center;
-  font-weight: bold;
-  font-size: 42px;
-  margin-bottom: 30px;
-  animation: fadeIn 1s both, slideInUp 1s both;
-  animation-delay: 0.5s;
+    text-align: center;
+    font-weight: bold;
+    font-size: 42px;
+    margin-bottom: 30px;
+    animation: fadeIn 4s both, slideInUp 4s both;
+    animation-delay: 0.5s;
 }
 
 /* These rules target parent containers to override theme's max-width */
@@ -18,32 +18,15 @@ body.gallery-page-full-width .relative.flex.flex-col.grow {
     padding: 0 !important;
 }
 
-/* .gallery-page-header {
-  text-align: center;
-  font-weight: bold;
-  font-size: 42px;
-  margin-bottom: 30px;
-  animation: fadeIn 1s both, slideInUp 1s both;
-  animation-delay: 0.5s;
-} */
-
-/* These rules target parent containers to override theme's max-width
-main#main-content.grow:has(.gallery.full-width-gallery) {
-    max-width: none !important;
-    padding: 0 !important;
+.gallery-text {
+    text-align: center;
+    /* font-weight: bold; */
+    font-size: 14px;
+    margin-bottom: 30px;
+    animation: fadeIn 4s both, slideInUp 4s both;
+    animation-delay: 0.5s;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
 }
-
-.relative.flex.flex-col.grow:has(.gallery.full-width-gallery) {
-    max-width: none !important;
-    padding: 0 !important;
-}
-
-body.gallery-page-full-width main {
-    max-width: none !important;
-    padding: 0 !important;
-}
-
-body.gallery-page-full-width .relative.flex.flex-col.grow {
-    max-width: none !important;
-    padding: 0 !important;
-}  */
