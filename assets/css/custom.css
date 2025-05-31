@@ -6,9 +6,22 @@
 }  */
 
 /* Prevent headers from being highlightable globally */
-h1, h2, h3, h4, h5, h6 {
+h1, h2 {
     user-select: none !important;
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     -ms-user-select: none !important;
+}
+
+.grid.grid-cols-3 .col-span-2 .prose {
+max-width: none;
+    text-align: justify;
+    /* Add text justification for dark mode */
+}
+
+/* If you also need to target dark mode specifically for the override */
+.dark .grid.grid-cols-3 .col-span-2 .prose {
+max-width: none;
+    text-align: justify;
+    /* Add text justification for dark mode */
 }
