@@ -2,8 +2,8 @@
     text-align: center;
     font-weight: bold;
     font-size: 42px;
-    margin-bottom: 30px;
-    animation: fadeIn 4s both, slideInUp 4s both;
+    margin-bottom: 80px;
+    animation: fadeIn 3s both, slideInUp 3s both;
     animation-delay: 0.5s;
 }
 
