@@ -9,26 +9,26 @@
     {{ end }}
     {{ if $authorImage }}
       {{ if not $disableImageOptimization }}
-        {{ $authorImage = $authorImage.Fill "288x288 q96" }}
+        {{ $authorImage = $authorImage.Fill "250x250 q96" }}
       {{ end }}
-      <img class="mb-2 rounded-full h-36 w-36" width="144" height="144"
+      <img class="mb-6 rounded-full aspect-square object-cover" 
       alt="{{ $.Site.Params.Author.name | default " Author" }}" src="{{ $authorImage.RelPermalink }}" />
     {{ else }}
       {{ $authorImage := resources.GetRemote . }}
       {{ if not $disableImageOptimization }}
-        {{ $authorImage = $authorImage.Fill "288x288 q96" }}
+        {{ $authorImage = $authorImage.Fill "250x250 q96" }}
       {{ end }}
-      <img class="!mt-0 !mb-0 h-24 w-24 rounded-full" width="96" height="96"
+      <img class="!mt-0 !mb-0 aspect-square rounded-full object-cover" 
       alt="{{ $.Site.Params.Author.name | default " Author" }}" src="{{ $authorImage.RelPermalink }}" />
     {{ end }}
   {{ end }}
   {{ with .Site.Params.Author.name | markdownify }}
-    <h2 class="font-semibold leading-6 text-neutral-800 dark:text-neutral-200 text-center">
+    <h2 class="font-bold  leading-6 text-neutral-800 dark:text-neutral-200 text-center text-3xl">
       {{ . }}
     </h2>
   {{ end }}
   {{ with .Site.Params.Author.headline | markdownify }}
     <div class="text-sm text-neutral-700 dark:text-neutral-400 text-center">{{ . }}</div>
   {{ end }}
-  <div class="text-2xl sm:text-lg mt-3">{{ partialCached "author-links.html" . }}</div>
+  <div class="text-4xl sm:text-2xl mt-4">{{ partialCached "author-links.html" . }}</div>
 </div> 
