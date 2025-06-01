@@ -16,7 +16,7 @@
     weight = 10
 
 [[main]]
-name = "Gallery"
+name = "Photography"
 url = "/gallery/"
 weight = 20
 

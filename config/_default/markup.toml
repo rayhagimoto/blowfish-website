@@ -11,3 +11,16 @@
 [tableOfContents]
   startLevel = 2
   endLevel = 4
+
+[math]
+  enable = true
+  # KaTeX options
+  [math.katex]
+    # See https://github.com/KaTeX/KaTeX/blob/master/docs/options.md
+    displayMode = true
+    output = 'html'
+    strict = false
+    throwOnError = false
+    errorColor = '#cc0000'
+    trust = true
+    macros = {}
