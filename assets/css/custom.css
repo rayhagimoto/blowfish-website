@@ -9,6 +9,34 @@
 .prose {
     max-width: none;
     text-align: justify;
+    line-height: 1.8; /* Increased line spacing for better readability */
+}
+
+/* Line spacing for different header levels */
+.prose h1 {
+    line-height: 1.0;
+    margin-bottom: 1.0em;
+}
+
+.prose h2 {
+    line-height: 1.2;
+    margin-top: 1.0em;
+    margin-bottom: 1.0em;
+}
+
+.prose h3 {
+    line-height: 1.0;
+    margin-bottom: 0.5em;
+}
+
+.prose h4, .prose h5, .prose h6 {
+    line-height: 1.0;
+    margin-bottom: 0.4em;
+}
+
+/* Add some spacing between paragraphs */
+.prose p {
+    margin-bottom: 0.0em;
 }
 
 /* If you also need to target dark mode specifically for the override */
@@ -64,4 +92,29 @@
 /* Hover effect */
 .logo:hover {
     @apply text-primary-600 dark:text-primary-400;
+}
+
+/* Custom grid for Interests and Education sections */
+.author-extra-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0rem; /* Use the same gap as the main bio grid */
+}
+
+/* Apply two-column layout on medium screens and up */
+@media (min-width: 1px) { /* Using 853px as the md breakpoint based on theme */
+    .author-extra-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Style for bullet points in the Interests section */
+.author-extra-grid section:first-child li::marker {
+    color: var(--color-primary-400, #A78BFA); /* Using a CSS variable based on theme colors, with a fallback */
+}
+
+/* Reduce bottom margin for paragraphs within the Education section */
+.author-extra-grid > section:nth-child(2) p {
+    margin-top: 0.0em !important; /* Adjust as needed to control spacing between course and institution */
+    margin-bottom: 0.0em !important; /* Adjust as needed to control spacing between course and institution */
 }
