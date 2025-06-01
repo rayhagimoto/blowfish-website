@@ -1,0 +1,19 @@
+{{ $src := .Get "src" }}
+{{ $alt := .Get "alt" | default "" }}
+{{ $caption := .Get "caption" | default "" }}
+{{ $class := .Get "class" | default "" }}
+{{ $center := .Get "center" | default "true" }}
+{{ $id := .Get "id" | default "" }}
+
+<figure {{ with $id }}id="{{ . }}"{{ end }} class="{{ if eq $center "true" }}flex flex-col items-center{{ end }}">
+  <img 
+    src="{{ $src }}" 
+    alt="{{ $alt }}"
+    class="dark-mode-svg {{ $class }}"
+    {{ with .Get "width" }}width="{{ . }}"{{ end }}
+    {{ with .Get "height" }}height="{{ . }}"{{ end }}
+  />
+  {{ with $caption }}
+    <figcaption class="{{ if eq $center "true" }}text-center{{ end }}">{{ . | markdownify }}</figcaption>
+  {{ end }}
+</figure> 
