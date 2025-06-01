@@ -76,3 +76,6 @@ enableEmoji = true
         [markup.goldmark.extensions.passthrough.delimiters]
           block = [['\[', '\]'], ['$$', '$$']]
           inline = [['\(', '\)']]
+
+[params]
+  Logo = "icons/icon-rh-black.svg"
