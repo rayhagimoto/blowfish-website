@@ -1,5 +1,5 @@
 /* Prevent headers from being highlightable globally */
-h1, h2 {
+.non-select-header {
     user-select: none !important;
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -49,4 +49,19 @@ h1, h2 {
 /* Optional: Add a smooth transition when switching themes */
 .dark-mode-svg {
     transition: filter 0.3s ease-in-out;
+}
+
+/* Custom styles for the logo */
+.logo {
+    @apply text-neutral-800 dark:text-neutral-200;
+}
+
+.logo svg {
+    @apply h-[5rem] w-[5rem];
+    transition: color 0.3s ease;
+}
+
+/* Hover effect */
+.logo:hover {
+    @apply text-primary-600 dark:text-primary-400;
 }
