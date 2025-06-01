@@ -6,16 +6,10 @@ summary: "Solutions to select problems in Steven Weinberg's \"The Quantum Theory
   of Fields: Vol. I\"."
 draft: false
 featured: false
-authors: []
-tags:
-  - qft
-  - weinberg
-  - solutions
-  - vol-1
-image:
-  filename: qft-vol-1.jpg
 ---
-### [Click here for solutions PDF](/notes/qft/weinberg-solutions.pdf)
+{{< alert >}}
+[Click here for solutions PDF](/notes/qft/weinberg-solutions.pdf)
+{{< /alert >}}
 
 This post contains solutions to select problems in Steven Weinberg's "The Quantum Theory of Fields: Vol. I". The PDF (link above) was authored by [Hong-Yi Zhang](https://hongyi18.github.io/), [Siyang Ling](https://github.com/hypermania), [Jiazhao Lin](https://github.com/jiazhao-lin), and myself. Please note that this is still a work in progress. **If you notice any mistakes please contact me at** *rmh14 \[at] rice \[dot] edu*.
 

@@ -27,7 +27,7 @@
               alt="{{ site.Params.Author.name | default " Author" }}" src="{{ $authorImage.RelPermalink }}" />
             {{ end }}
           {{ end }}
-          {{ with site.Params.Author.name | markdownify }}
+          {{ with site.Params.Author.name | title | markdownify }}
             <h2 class="font-bold leading-6 text-neutral-800 dark:text-neutral-200 text-center text-3xl">
               {{ . }}
             </h2>
@@ -54,6 +54,35 @@
         {{ with .Site.GetPage "authors/admin" }}
           {{ .Content }}
         {{ end }}
+        <section class="author-extra-grid mt-8">
+          {{ with .Site.GetPage "authors/admin" }}
+            {{ if or .Params.interests .Params.education.courses }}
+              <section>
+                {{ with .Params.interests }}
+                  <h2 class="font-bold leading-6 text-neutral-800 dark:text-neutral-200 text-2xl mb-4">Interests</h2>
+                  <ul class="list-disc list-inside text-neutral-700 dark:text-neutral-400">
+                    {{ range . }}
+                      <li>{{ . | markdownify }}</li>
+                    {{ end }}
+                  </ul>
+                {{ end }}
+              </section>
+              <section>
+                {{ with .Params.education.courses }}
+                  <h2 class="font-bold leading-6 text-neutral-800 dark:text-neutral-200 text-2xl">Education</h2>
+                  {{ range . }}
+                      {{ with .course }}
+                        <p class="font-bold text-neutral-800 dark:text-neutral-200 space-y-1">{{ . | markdownify }}</p>
+                      {{ end }}
+                      {{ with .institution }}
+                        <p class="text-neutral-700 dark:text-neutral-400 text-sm">{{ . | markdownify }}</p>
+                      {{ end }}
+                  {{ end }}
+                {{ end }}
+              </section>
+            {{ end }}
+          {{ end }}
+        </section>
       </section>
     </section>
   </div>

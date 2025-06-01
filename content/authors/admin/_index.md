@@ -5,16 +5,6 @@ bio: Cosmology theorist in training, investigating axion cosmic strings.
 interests:
   - Axion string networks
   - Cosmological particle production
-social:
-  - icon: google-scholar
-    icon_pack: ai
-    link: https://scholar.google.com/citations?user=zGLH_2EAAAAJ
-  - icon: github
-    icon_pack: fab
-    link: https://github.com/rayhagimoto
-  - icon: linkedin-in
-    icon_pack: fab
-    link: https://www.linkedin.com/in/ray-hagimoto-85b959158/
 organizations:
   - name: Rice University
     url: ""

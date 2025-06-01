@@ -2,7 +2,7 @@ disabled = false
 languageCode = "en"
 languageName = "English"
 weight = 1
-title = "Ray Hagimoto"
+title = "ray hagimoto"
 
 [params]
 displayName = "EN"
@@ -11,7 +11,7 @@ rtl = false
 dateFormat = "2 January 2006"
 
 [params.author]
-name = "Ray Hagimoto"
+name = "ray hagimoto"
 email = "rayhagimoto@gmail.com"
 image = "img/profile.jpeg"
 bio = "a little about me" 

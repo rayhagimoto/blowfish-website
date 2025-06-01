@@ -1,8 +1,9 @@
 # netlify.toml
 
 [build]
-  command = "hugo --gc --minify -b $URL"
+  command = "git submodule update --init --recursive && hugo --gc --minify"
   publish = "public"
+  ignore = "echo 'Ignore rule: skipping netlify.toml'"
 
 [build.environment]
   NODE_ENV = "production"
