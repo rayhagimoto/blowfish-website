@@ -40,7 +40,7 @@ I completed my PhD in Physics at Rice University in Houston. I was advised by Pr
 
 As an undergrad I did research in computational nanophotonics with [Nicolas Large](https://sites.google.com/site/acoustoplasmonics/) at the University of Texas at San Antonio and did NSF REUs at Brigham Young University and the University of Chicago where I studied quantum dynamics and cosmology respectively.
 
-A copy of my resume can be found [here](https://rayhagimoto.github.io/resume/hagimoto-resume.pdf).
+**A copy of my resume can be found [here](https://rayhagimoto.github.io/resume/hagimoto-resume.pdf).**
 
 
 
