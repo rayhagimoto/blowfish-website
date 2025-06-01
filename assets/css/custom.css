@@ -1,10 +1,3 @@
-/* Import article-link.css using Hugo Pipes */
-/* Add your custom styles below */
-
-/* .dark .article-link-title:hover {
-    color: rgb(var(--color-primary-500)) !important;
-}  */
-
 /* Prevent headers from being highlightable globally */
 h1, h2 {
     user-select: none !important;
@@ -16,12 +9,34 @@ h1, h2 {
 .grid.grid-cols-3 .col-span-2 .prose {
 max-width: none;
     text-align: justify;
-    /* Add text justification for dark mode */
 }
 
 /* If you also need to target dark mode specifically for the override */
 .dark .grid.grid-cols-3 .col-span-2 .prose {
 max-width: none;
     text-align: justify;
-    /* Add text justification for dark mode */
+}
+
+/* Custom grid for author bio */
+.author-bio-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem; /* Adding a default gap similar to Tailwind's gap-4 */
+}
+
+/* Add responsive behavior for stacking on small screens */
+@media (max-width: 852px) { /* Using 853px as the md breakpoint based on theme */
+    .author-bio-grid {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+}
+
+/* Apply column layout on medium screens and up */
+@media (min-width: 853px) { /* Using 853px as the md breakpoint based on theme */
+    .author-bio-grid > section:first-child {
+        grid-column: 1;
+    }
+    .author-bio-grid > section:nth-child(2) {
+        grid-column: 2 / span 2;
+    }
 }
