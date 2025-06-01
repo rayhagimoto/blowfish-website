@@ -26,7 +26,7 @@
 }
 
 .min-h-full.rounded.overflow-hidden.is-hovered::before {
-    opacity: 1;
+    opacity: 0.5;
     transition: opacity 1s ease;
 }
 
@@ -44,6 +44,6 @@
 
 /* Temporary rule to check if .is-hovered class is applied */
 .min-h-full.rounded.overflow-hidden.is-hovered::before {
-    opacity: 1;
+    opacity: 0.5;
     transition: opacity 1s ease;
 }

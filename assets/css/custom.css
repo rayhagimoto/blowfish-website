@@ -6,14 +6,14 @@ h1, h2 {
     -ms-user-select: none !important;
 }
 
-.grid.grid-cols-3 .col-span-2 .prose {
-max-width: none;
+.prose {
+    max-width: none;
     text-align: justify;
 }
 
 /* If you also need to target dark mode specifically for the override */
-.dark .grid.grid-cols-3 .col-span-2 .prose {
-max-width: none;
+.prose {
+    max-width: none;
     text-align: justify;
 }
 
