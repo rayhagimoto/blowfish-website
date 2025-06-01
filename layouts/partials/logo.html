@@ -1,0 +1,24 @@
+{{ if .Site.Params.Logo }}
+{{ $logo := resources.Get .Site.Params.Logo }}
+{{ if $logo }}
+<div>
+    <a href="{{ "" | relLangURL }}" class="flex">
+        <span class="sr-only">{{ .Site.Title | markdownify }}</span>
+
+        {{ if eq $logo.MediaType.SubType "svg" }}
+        <span class="logo object-scale-down object-left nozoom">
+            {{ $logoContent := $logo.Content | safeHTML }}
+            {{ if strings.Contains $logoContent "currentColor" }}
+                {{ $logoContent | safeHTML }}
+            {{ else }}
+                {{ $logoContent | replaceRE "fill=\"[^\"]*\"" "fill=\"currentColor\"" | safeHTML }}
+            {{ end }}
+        </span>
+        {{ else }}
+        <img src="{{ $logo.RelPermalink }}" width="{{ div $logo.Width 2 }}" height="{{ div $logo.Height 2 }}"
+            class="logo max-h-[5rem] max-w-[5rem] object-scale-down object-left nozoom" alt="{{ .Site.Title }}" />
+        {{ end }}
+    </a>
+</div>
+{{ end }}
+{{- end }} 
