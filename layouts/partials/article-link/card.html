@@ -1,6 +1,5 @@
 {{ $disableImageOptimization := .Page.Site.Params.disableImageOptimization | default false }}
-{{ $styles := resources.Get "css/article-link.css" | minify }}
-<link rel="stylesheet" href="{{ $styles.Permalink }}" media="screen">
+
 {{ with .Params.externalUrl }}
 <a href="{{ . }}" target="_blank" rel="external" class="min-w-full">
   {{ else }}
