@@ -11,7 +11,7 @@ featured: false
 [Click here for solutions PDF](/notes/qft/weinberg-solutions.pdf)
 {{< /alert >}}
 
-This post contains solutions to select problems in Steven Weinberg's "The Quantum Theory of Fields: Vol. I". The PDF (link above) was authored by [Hong-Yi Zhang](https://hongyi18.github.io/), [Siyang Ling](https://github.com/hypermania), [Jiazhao Lin](https://github.com/jiazhao-lin), and myself. Please note that this is still a work in progress. **If you notice any mistakes please contact me at** *rmh14 \[at] rice \[dot] edu*.
+This post contains solutions to select problems in Steven Weinberg's "The Quantum Theory of Fields: Vol. I". The PDF (link above) was authored by [Hong-Yi Zhang](https://hongyi18.github.io/), [Siyang Ling](https://siyangling.com/), [Jiazhao Lin](https://github.com/jiazhao-lin), and myself. Please note that this is still a work in progress. **If you notice any mistakes please contact me at** *rmh14 \[at] rice \[dot] edu*.
 
 Currently solutions are available for the following problems:
 
