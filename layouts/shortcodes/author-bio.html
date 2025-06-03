@@ -4,7 +4,7 @@
       {{ with .Site.GetPage "authors/admin" }}
         {{ $authorPage := . }}
         {{ $disableImageOptimization := site.Params.disableImageOptimization | default false }}
-        <div class="flex flex-col items-center">
+        <div class="flex flex-col items-center text-center">
           {{ with site.Params.Author.image }}
             {{ $authorImage := "" }}
             {{ if or (strings.HasPrefix . "http:") (strings.HasPrefix . "https:") }}
@@ -17,72 +17,52 @@
                 {{ $authorImage = $authorImage.Fill "250x250 q96" }}
               {{ end }}
               <img class="mb-6 rounded-full aspect-square object-cover" 
-              alt="{{ site.Params.Author.name | default " Author" }}" src="{{ $authorImage.RelPermalink }}" />
-            {{ else }}
-              {{ $authorImage := resources.GetRemote . }}
-              {{ if not $disableImageOptimization }}
-                {{ $authorImage = $authorImage.Fill "250x250 q96" }}
-              {{ end }}
-              <img class="!mt-0 !mb-0 aspect-square rounded-full object-cover" 
-              alt="{{ site.Params.Author.name | default " Author" }}" src="{{ $authorImage.RelPermalink }}" />
+                alt="{{ site.Params.Author.name | default " Author" }}" src="{{ $authorImage.RelPermalink }}" />
             {{ end }}
           {{ end }}
           {{ with site.Params.Author.name | title | markdownify }}
-            <h2 class="font-bold leading-6 text-neutral-800 dark:text-neutral-200 text-center text-3xl">
+            <h2 class="font-bold leading-6 text-neutral-800 dark:text-neutral-200 text-3xl">
               {{ . }}
             </h2>
           {{ end }}
           {{ with $authorPage.Params.role | markdownify }}
-            <p class="mt-4 text-neutral-700 dark:text-neutral-400 text-center">{{ . }}</p>
+            <p class="mt-4 text-neutral-700 dark:text-neutral-400">{{ . }}</p>
           {{ end }}
           {{ with $authorPage.Params.organizations }}
             {{ range . }}
               {{ with .name | markdownify }}
-                <p class="mt-1 text-neutral-700 dark:text-neutral-400 text-center">{{ . }}</p>
+                <p class="mt-1 text-neutral-700 dark:text-neutral-400">{{ . }}</p>
               {{ end }}
             {{ end }}
           {{ end }}
           {{ with site.Params.Author.headline | markdownify }}
-            <div class="text-sm text-neutral-700 dark:text-neutral-400 text-center">{{ . }}</div>
+            <div class="text-sm text-neutral-700 dark:text-neutral-400">{{ . }}</div>
           {{ end }}
-          <div class="text-4xl sm:text-2xl mt-4">{{ partialCached "author-links.html" . }}</div>
+          <div class="mb-4 mt-4">{{ partialCached "author-links.html" . }}</div>
+
+          <!-- ✅ Moved Education section here -->
+          {{ with $authorPage.Params.education.courses }}
+            <div class="ml-4 text-left w-full text-md">
+              <h2 class="font-bold text-neutral-700 dark:text-neutral-200 text-xl mb-2">Education</h2>
+              {{ range . }}
+                {{ with .course }}
+                  <p class="text-neutral-800 dark:text-neutral-200 space-y-1">{{ . | markdownify }}</p>
+                {{ end }}
+                {{ with .institution }}
+                  <p class="text-neutral-700 dark:text-neutral-400  mb-3">{{ . | markdownify }}</p>
+                {{ end }}
+              {{ end }}
+            </div>
+          {{ end }}
         </div>
       {{ end }}
     </section>
+
     <section>
       <section class="prose dark:prose-invert">
         {{ with .Site.GetPage "authors/admin" }}
           {{ .Content }}
         {{ end }}
-        <section class="author-extra-grid mt-8">
-          {{ with .Site.GetPage "authors/admin" }}
-            {{ if or .Params.interests .Params.education.courses }}
-              <section>
-                {{ with .Params.interests }}
-                  <h2 class="font-bold leading-6 text-neutral-800 dark:text-neutral-200 text-2xl mb-4">Interests</h2>
-                  <ul class="list-disc list-inside text-neutral-700 dark:text-neutral-400">
-                    {{ range . }}
-                      <li>{{ . | markdownify }}</li>
-                    {{ end }}
-                  </ul>
-                {{ end }}
-              </section>
-              <section>
-                {{ with .Params.education.courses }}
-                  <h2 class="font-bold leading-6 text-neutral-800 dark:text-neutral-200 text-2xl">Education</h2>
-                  {{ range . }}
-                      {{ with .course }}
-                        <p class="font-bold text-neutral-800 dark:text-neutral-200 space-y-1">{{ . | markdownify }}</p>
-                      {{ end }}
-                      {{ with .institution }}
-                        <p class="text-neutral-700 dark:text-neutral-400 text-sm">{{ . | markdownify }}</p>
-                      {{ end }}
-                  {{ end }}
-                {{ end }}
-              </section>
-            {{ end }}
-          {{ end }}
-        </section>
       </section>
     </section>
   </div>
