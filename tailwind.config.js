@@ -186,6 +186,7 @@ module.exports = {
     'opacity-0',
     'opacity-100',
     'transition-opacity',
-    'duration-700',
+    'duration-[3000ms]',
+    'ease-in-out',
   ],
 };

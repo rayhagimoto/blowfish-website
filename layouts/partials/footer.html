@@ -53,43 +53,42 @@
     document.addEventListener("DOMContentLoaded", () => {
       const zoomableImages = document.querySelectorAll("img:not(.nozoom)");
   
-      const transitionPromises = Array.from(zoomableImages).map(img => {
-        return new Promise(resolve => {
-          const fadeInAndWaitForTransition = () => {
-            // Force reflow to ensure transition triggers
-            img.offsetHeight;
+      zoomableImages.forEach(img => {
+        img.classList.add("opacity-0", "transition-opacity", "duration-[3000ms]", "ease-in-out");
+  
+        const fadeIn = () => {
+          // Measure vertical position
+          const topOffset = img.getBoundingClientRect().top + window.scrollY;
+  
+          // Convert top offset to delay (adjust multiplier as needed)
+          const delay = topOffset * 0.5; // 0.3ms per pixel
+  
+          setTimeout(() => {
+            void img.offsetHeight; // force reflow
             img.classList.add("opacity-100");
+          }, delay);
+        };
   
-            // Resolve after the transition ends
-            img.addEventListener("transitionend", function handler(e) {
-              if (e.propertyName === "opacity") {
-                img.removeEventListener("transitionend", handler);
-                resolve();
-              }
-            });
-          };
-  
-          if (img.complete) {
-            fadeInAndWaitForTransition();
-          } else {
-            img.addEventListener("load", fadeInAndWaitForTransition, { once: true });
-          }
-        });
+        if (img.complete) {
+          fadeIn();
+        } else {
+          img.addEventListener("load", fadeIn, { once: true });
+        }
       });
   
-      // Wait for ALL transitions to finish before applying mediumZoom
-      Promise.all(transitionPromises).then(() => {
-        console.log("All transitions complete. Initializing mediumZoom.");
-        {{ if not .Site.Params.disableImageZoom | default true }}
+      // Optionally initialize mediumZoom after fade-ins
+      {{ if not .Site.Params.disableImageZoom | default true }}
+      setTimeout(() => {
         mediumZoom(zoomableImages, {
           margin: 24,
           background: 'rgba(0,0,0,0.5)',
           scrollOffset: 0,
         });
-        {{ end }}
-      });
+      }, 3000); // delay initialization until most animations are done
+      {{ end }}
     });
   </script>
+  
   
   
   

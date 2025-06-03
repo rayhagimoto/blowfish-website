@@ -6,5 +6,8 @@
     "server": "hugo server -b http://localhost -p 8000",
     "dev": "npx tailwindcss --config=tailwind.config.js --input=themes/blowfish/assets/css/main.css --output=assets/css/compiled/main.css",
     "build": "npx tailwindcss --config=tailwind.config.js --input=themes/blowfish/assets/css/main.css --output=assets/css/compiled/main.css"
+  },
+  "dependencies": {
+    "netlify-cli": "^21.5.2"
   }
 }

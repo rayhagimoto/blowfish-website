@@ -2164,10 +2164,6 @@ body.zen-mode-enable {
     --tw-duration: 300ms;
     transition-duration: 300ms;
   }
-  .duration-700 {
-    --tw-duration: 700ms;
-    transition-duration: 700ms;
-  }
   .duration-\[350ms\] {
     --tw-duration: 350ms;
     transition-duration: 350ms;
@@ -2175,6 +2171,10 @@ body.zen-mode-enable {
   .duration-\[600ms\] {
     --tw-duration: 600ms;
     transition-duration: 600ms;
+  }
+  .duration-\[3000ms\] {
+    --tw-duration: 3000ms;
+    transition-duration: 3000ms;
   }
   .ease-\[cubic-bezier\(0\,0\,0\.15\,1\)\,_cubic-bezier\(0\,0\,0\.15\,1\)\] {
     --tw-ease: cubic-bezier(0,0,0.15,1), cubic-bezier(0,0,0.15,1);

@@ -17,9 +17,8 @@
       {{ range $i, $img := $images }}
       {{ $thumb := $img.Resize "600x webp" }}
       <div class="break-inside-avoid">
-        <img class="w-full rounded-lg shadow opacity-0 transition-opacity duration-700 ease-in-out"
+        <img class="w-full rounded-lg shadow opacity-0"
           src="{{ $thumb.RelPermalink }}" alt="{{ $thumb.Name }}" loading="lazy" decoding="async"
-          onload="this.classList.add('opacity-100')"
           data-zoom-src="{{ $img.RelPermalink }}">
       </div>
       {{ end }}
