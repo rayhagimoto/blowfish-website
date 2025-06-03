@@ -1,21 +1,27 @@
+{{ define "body_width" }}max-w-none{{ end }}
 {{ define "main" }}
-{{ $images := resources.Match "img/gallery/**/*.{jpg,jpeg,png,JPG,JPEG,PNG}" }}
 
-<div class="mx-auto w-full px-4 py-8">
-  {{ if $images }}
-  {{ $images = sort $images ".Name" "asc" }}
+    <h1 class="text-6xl font-bold text-primary-400 pb-8 text-center">photography</h1>
 
-  <div class="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-5">
-    {{ range $images }}
-    {{ $thumb := .Resize "200x" }}
-    <div class="break-inside-avoid mb-5 w-full">
-      <img src="{{ $thumb.RelPermalink }}" alt="{{ .Name }}" loading="lazy" decoding="async"
-        class="block w-full rounded shadow hover:opacity-90 transition-opacity duration-150">
-    </div>
+    {{ $images := resources.Match "img/gallery/**/*.{jpg,jpeg,png,JPG,JPEG,PNG}" }}
+    {{ $images = sort $images ".Name" "asc" }}
+    
+    {{ $thumbs := slice }}
+    {{ range $img := $images }}
+    {{ $thumb := $img.Resize "600x" }}
+    {{ $thumbs = $thumbs | append $thumb }}
     {{ end }}
-  </div>
-  {{ else }}
-  <p>No images found in <code>assets/img/gallery/</code>.</p>
-  {{ end }}
-</div>
+    
+
+
+    <div id="gallery" class="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4">
+      {{ range $img := $images }}
+      {{ $thumb := $img.Resize "600x webp" }}
+      <div class="break-inside-avoid">
+        <img class="w-full rounded-lg shadow opacity-0 transition-opacity duration-700 ease-in-out"
+          src="{{ $thumb.RelPermalink }}" alt="{{ $thumb.Name }}" loading="lazy" decoding="async"
+          onload="this.classList.add('opacity-100')" data-zoom-src="{{ $img.RelPermalink }}">
+      </div>
+      {{ end }}
+    </div>
 {{ end }}
