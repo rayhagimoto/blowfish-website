@@ -9,40 +9,11 @@
 .prose {
     max-width: none;
     text-align: justify;
-    line-height: 1.8; /* Increased line spacing for better readability */
 }
 
-/* Line spacing for different header levels */
-.prose h1 {
-    line-height: 1.0;
-    margin-bottom: 1.0em;
-}
-
-.prose h2 {
-    line-height: 1.2;
-    margin-top: 1.0em;
-    margin-bottom: 1.0em;
-}
-
-.prose h3 {
-    line-height: 1.0;
-    margin-bottom: 0.5em;
-}
-
-.prose h4, .prose h5, .prose h6 {
-    line-height: 1.0;
-    margin-bottom: 0.4em;
-}
-
-/* Add some spacing between paragraphs */
-.prose p {
-    margin-bottom: 0.0em;
-}
-
-/* If you also need to target dark mode specifically for the override */
-.prose {
-    max-width: none;
-    text-align: justify;
+.author-bio-text h1, h2 {
+    margin-top: 0.0em;
+    margin-bottom: 0.25em;
 }
 
 /* Custom grid for author bio */
