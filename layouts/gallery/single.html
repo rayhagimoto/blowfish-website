@@ -1,7 +1,7 @@
 {{ define "body_width" }}max-w-none{{ end }}
 {{ define "main" }}
 
-    <h1 class="text-6xl font-bold text-primary-400 pb-8 text-center">photography</h1>
+    <h1 class="text-6xl font-bold text-primary-400 pb-12 text-center">photography</h1>
 
     {{ $images := resources.Match "img/gallery/**/*.{jpg,jpeg,png,JPG,JPEG,PNG}" }}
     {{ $images = sort $images ".Name" "asc" }}
@@ -13,14 +13,14 @@
     {{ end }}
     
 
-
     <div id="gallery" class="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4">
-      {{ range $img := $images }}
+      {{ range $i, $img := $images }}
       {{ $thumb := $img.Resize "600x webp" }}
       <div class="break-inside-avoid">
         <img class="w-full rounded-lg shadow opacity-0 transition-opacity duration-700 ease-in-out"
           src="{{ $thumb.RelPermalink }}" alt="{{ $thumb.Name }}" loading="lazy" decoding="async"
-          onload="this.classList.add('opacity-100')" data-zoom-src="{{ $img.RelPermalink }}">
+          onload="this.classList.add('opacity-100')"
+          data-zoom-src="{{ $img.RelPermalink }}">
       </div>
       {{ end }}
     </div>
