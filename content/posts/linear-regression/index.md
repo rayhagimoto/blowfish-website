@@ -14,6 +14,7 @@ image:
 ## Introduction
 
 These notes are written as a quick reference on ordinary least squares (OLS) regression.
+I have more detailed notes in pdf form (here)[https://rayhagimoto.pages.io/linear-regression-notes/linear_regression.pdf].
 
 Suppose we have a dataset \(\mathcal{D} = \{(x_i, y_i) : i = 1, 2, \dots, n\}\), where \( x_i \in \mathbb{R} \) is a scalar covariate and \( y_i \in \mathbb{R} \) is the response. We assume this data is drawn i.i.d. from some unknown distribution \( p(x, y) \). Since we’re interested in predicting \( y \) from \( x \), it’s natural to factor the joint distribution as:
 
@@ -133,18 +134,92 @@ This is a very subtle and easy-to-forget assumption, which basically says that w
 
 ---
 
-## Significance testing
+## Significance Testing
 
-The most common statistic to assess significance of an estimate \( \hat{\beta}_\mathrm{OLS} \) is the \(t\)-test. 
+After fitting the OLS model, we often want to assess whether each coefficient \( \beta_j \) is statistically different from zero. This is typically done using a _t-test_, which tests the null hypothesis \( H_0: \beta_j = 0 \) against the alternative \( H_1: \beta_j \ne 0 \).
+
+### General form
+
+The test statistic for coefficient \( \hat{\beta}_j \) is given by:
+
 $$
-  \hat{t} = \frac{ \hat{\beta}_\mathrm{OLS} }{ \hat{\mathrm{Std Dev}}(\hat{\beta}_\mathrm{OLS}) }
+t_j = \frac{ \hat{\beta}_j }{ \widehat{\mathrm{SE}}(\hat{\beta}_j) }
 $$
-where \(\hat{\mathrm{Std Dev}}\hat{\beta}_\mathrm{OLS}\) is the MLE estimator for the standard deviation of the estimator.
-For one covariate the formula is a little different for the slope and the constant.
-For the slope parameter (i.e. \(\beta_1\)) it's
+
+where \( \widehat{\mathrm{SE}}(\hat{\beta}_j) \) is the estimated standard error of \( \hat{\beta}_j \). Under the null hypothesis, and assuming the OLS assumptions hold (particularly homoscedasticity and Gaussian errors), this statistic approximately follows a Student’s t-distribution with \( n - p - 1 \) degrees of freedom, where \( p \) is the number of covariates.
+(For example if our model is \( y = \beta_0 + \beta_1 x \) then \(p = 1\)).
+
+---
+
+### Univariate case
+
+For the simple regression model \( y = \beta_0 + \beta_1 x + \varepsilon \), we define the residual variance:
+
 $$
-  \hat{\mathrm{Std Dev}}\hat{\beta}_\mathrm{OLS} = 
+\hat{\sigma}^2 = \frac{1}{n - 2} \sum_{i=1}^n \left( y_i - \hat{y}_i \right)^2 = \frac{1}{n - 2} \sum_{i=1}^n \left( y_i - \hat{\beta}_0 - \hat{\beta}_1 x_i \right)^2
 $$
+
+Then the standard error of the slope estimator \( \hat{\beta}_1 \) is:
+
+$$
+\widehat{\mathrm{SE}}(\hat{\beta}_1) = \sqrt{ \frac{ \hat{\sigma}^2 }{ \sum_i (x_i - \bar{x})^2 } }
+$$
+
+and the t-statistic becomes:
+
+$$
+t_1 = \frac{ \hat{\beta}_1 }{ \widehat{\mathrm{SE}}(\hat{\beta}_1) }
+$$
+
+The corresponding p-value is computed from the t-distribution with \( n - 2 \) degrees of freedom.
+
+The standard error of the intercept \( \hat{\beta}_0 \) is:
+
+$$
+\widehat{\mathrm{SE}}(\hat{\beta}_0) = \sqrt{ \hat{\sigma}^2 \left( \frac{1}{n} + \frac{ \bar{x}^2 }{ \sum_i (x_i - \bar{x})^2 } \right) } \; .
+$$
+
+---
+
+### Multivariate case
+
+In the multivariate case, the estimated covariance matrix of \( \hat{\beta}_\mathrm{OLS} \) is:
+
+$$
+\widehat{\mathrm{Cov}}(\hat{\beta}) = \hat{\sigma}^2 (X^\mathsf{T} X)^{-1}
+$$
+
+where \( \hat{\sigma}^2 = \frac{1}{n - p - 1} \| Y - X \hat{\beta} \|^2 \) is the residual variance.
+
+Then for the \( j \)-th coefficient, the standard error is:
+
+$$
+\widehat{\mathrm{SE}}(\hat{\beta}_j) = \sqrt{ \left[ \widehat{\mathrm{Cov}}(\hat{\beta}) \right]_{jj} }
+$$
+
+and the t-statistic is:
+
+$$
+t_j = \frac{ \hat{\beta}_j }{ \widehat{\mathrm{SE}}(\hat{\beta}_j) }
+$$
+
+The derivation for these formulas is really easy in the multivariate case. 
+
+---
+
+### Practical use and limitations
+
+In practice, these t-tests are used to assess the individual relevance of each covariate. A small p-value (e.g., < 0.05) suggests evidence against the null \( \beta_j = 0 \), implying the corresponding feature may have predictive value.
+
+However, there are important caveats:
+
+- **Multiple comparisons**: If many covariates are tested, some will appear significant by chance. Adjustments (e.g. Bonferroni correction) may be needed.
+- **Model misspecification**: If the model omits relevant variables or includes irrelevant ones, the significance test can be misleading.
+- **Multicollinearity**: High correlation between features inflates standard errors, making it harder to detect significance even when the variable matters.
+- **Non-Gaussian errors**: The test assumes normally distributed residuals. When this fails, especially in small samples, the p-values may be unreliable.
+
+For these reasons, t-tests are often viewed as a rough diagnostic rather than a definitive decision tool. In applied settings (including finance), it is common to combine statistical significance with out-of-sample validation and domain knowledge.
+
 
 ---
 
