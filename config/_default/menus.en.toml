@@ -18,7 +18,12 @@
 [[main]]
 name = "photography"
 url = "/gallery/"
-weight = 20
+weight = 100
+
+[[main]]
+name = "notes"
+url = "/notes/"
+weight = 30
 
 
 
