@@ -140,3 +140,39 @@
     opacity: 0.9;
     transition: opacity 1s ease;
 }
+
+/* Article highlight box for blog */ 
+.article-highlight{
+    background-color: rgb(var(--color-primary-400));
+    padding: 2em;
+    border-radius: 0.3em;
+    color: rgb(var(--color-neutral-700));
+}
+
+.dark .article-highlight{
+    color: rgb(var(--color-neutral-100));
+}
+
+.article-highlight :is(h1, h2, h3, h4, h5) {
+    margin-top: 0;
+    margin-bottom: 0;
+    color: rgb(var(--color-neutral-700));
+}
+
+.dark .article-highlight :is(h1, h2, h3, h4, h5) {
+    color: rgb(var(--color-neutral-100));
+}
+
+.article-highlight li::marker {
+    color: rgb(var(--color-neutral-700));
+  }
+
+.dark .article-highlight li::marker {
+    color: rgb(var(--color-neutral-100));
+  }
+
+.article-highlight :is(ol li) {
+    margin-top: 0em;
+    margin-bottom: 0em;
+  }
+
