@@ -17,6 +17,7 @@ buymeacoffee = { }
 verification = { }
 rssnext = { }
 defaultBackgroundImage = "DSC04588.jpg"
+smartTOC = true
 
 [header]
 layout = "fixed-fill-blur"
