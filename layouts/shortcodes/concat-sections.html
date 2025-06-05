@@ -1,0 +1,7 @@
+{{ $resources := .Page.Resources.Match "*.md" }}
+{{ $filtered := where $resources "Name" "ne" "index.md" }}
+{{ $sorted := sort $filtered "Name" }}
+
+{{ range .Page.Resources }}
+  {{ readFile .Path | markdownify }}
+{{ end }}
