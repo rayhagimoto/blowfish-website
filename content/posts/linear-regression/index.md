@@ -14,7 +14,7 @@ image:
 ## Introduction
 
 These notes are written as a quick reference on ordinary least squares (OLS) regression.
-I have more detailed notes in pdf form (here)[https://rayhagimoto.pages.io/linear-regression-notes/linear_regression.pdf].
+I have more detailed notes in pdf form [here](https://rayhagimoto.pages.io/linear-regression-notes/linear_regression.pdf) .
 
 Suppose we have a dataset \(\mathcal{D} = \{(x_i, y_i) : i = 1, 2, \dots, n\}\), where \( x_i \in \mathbb{R} \) is a scalar covariate and \( y_i \in \mathbb{R} \) is the response. We assume this data is drawn i.i.d. from some unknown distribution \( p(x, y) \). Since we’re interested in predicting \( y \) from \( x \), it’s natural to factor the joint distribution as:
 
