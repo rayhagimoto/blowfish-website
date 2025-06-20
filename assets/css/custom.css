@@ -6,9 +6,14 @@
     -ms-user-select: none !important;
 }
 
+
 .max-w-prose {
-    max-width: 80ch;
+    max-width: none;
     text-align: justify;
+}
+
+article .prose{
+    max-width: none;
 }
 
 .author-bio-text h1, h2 {
