@@ -1172,8 +1172,14 @@ body.zen-mode-enable {
   .max-w-\[5rem\] {
     max-width: 5rem;
   }
+  .max-w-\[20rem\] {
+    max-width: 20rem;
+  }
   .max-w-\[64rem\] {
     max-width: 64rem;
+  }
+  .max-w-\[90rem\] {
+    max-width: 90rem;
   }
   .max-w-\[200px\] {
     max-width: 200px;
