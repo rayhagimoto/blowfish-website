@@ -16,7 +16,7 @@ selineAnalytics = { }
 buymeacoffee = { }
 verification = { }
 rssnext = { }
-defaultBackgroundImage = "DSC04588.jpg"
+defaultBackgroundImage = "img/background.jpg"
 smartTOC = true
 
 [header]
