@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compile Tailwind CSS",
+      "type": "shell",
+      "command": "npx tailwindcss --config=tailwind.config.js --input=themes/blowfish/assets/css/main.css --output=assets/css/compiled/main.css",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared"
+      }
+    }
+  ]
+}
