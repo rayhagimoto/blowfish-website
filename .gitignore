@@ -27,3 +27,6 @@ package-lock.json
 
 # web stuff that idk about 
 package.json
+
+# don't need compiled stuff either
+assets/css/compiled
