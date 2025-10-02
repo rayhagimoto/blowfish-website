@@ -19,3 +19,8 @@ Thumbs.db
 .netlify
 node_modules
 package-lock.json
+
+# cursor
+.vscode
+.cursorrules
+.cursor
