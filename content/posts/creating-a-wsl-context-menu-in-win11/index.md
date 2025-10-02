@@ -4,6 +4,8 @@ draft = false
 title = 'Creating a WSL Context Menu in Windows 11'
 +++
 
+{{< katex >}}
+
 # How to add an Open WSL here context menu in Windows 11
 
 In this blog post I will explain how I added an 'Open WSL here' context menu in Windows 11.
@@ -14,6 +16,10 @@ In this blog post I will explain how I added an 'Open WSL here' context menu in 
     caption="Screenshot of Windows Explorer 'Open WSL here' context menu option"
 >}}
 </div>
+
+This solution opens Windows Terminal with the correct terminal profile so that the tab uses the Ubuntu icon and tab name.
+
+![preview](images/preview.gif)
 
 # TL;DR Solution:
 
@@ -41,11 +47,37 @@ In this blog post I will explain how I added an 'Open WSL here' context menu in 
    4. Select **command**, double-click **(Default)**, and set it to:
 
       ```text
-      "C:\Users\ray\AppData\Local\Microsoft\WindowsApps\wt.exe" -p "Ubuntu 24.04.1 LTS" -d "%V"
+      "C:\Users\ray\AppData\Local\Microsoft\WindowsApps\wt.exe" -p "Ubuntu 24.04.1 LTS" -d %V
       ```
    5. Close Regedit, then restart Explorer or log out and back in.
 
-3. **(Optional) Add an icon**
+3. **Get WSL Profile name**
+
+   1. Open Windows Terminal in Powershell or Command Prompt
+   2. Run `wsl --list`
+   3. Identify the profile you want to use (for me it's Ubuntu-24.04)
+   ![step-3-ubuntu-profile-name](images/step3-ubuntu-profile-name.png)
+   4. Write it down or remember it.
+
+4. **Update Ubuntu Profile "Command Line" Setting**
+
+   1. Open Windows Terminal.
+   2. Go to the settings panel (CTRL + ,) or Dropdown Menu -> Settings.
+   ![step-4-ubuntu-profile-settings](images/step4-ubuntu-profile-settings.png)
+   3. Click on the dropdown arrow next to "Command line".
+   4. Change it from whatever it currently is to 
+      ```
+      C:\Windows\system32\wsl.exe -d <NAME_FROM_STEP_3>
+      ```
+      (For me it was `C:\Windows\system32\wsl.exe -d Ubuntu-24.04`).
+
+5. **Update "Starting Directory" Setting**
+
+   1. Right underneath the "Command line" option we just set, you will see "Starting directory". If you don't do this then when you open WSL in a new tab from Windows terminal it'll always start in `system32/` .
+   2. Change the "Starting directory" option to "~".  
+      I was worried that this would break some WSL behaviors like inheriting the directory from the process that launches it but so far I haven't run into any undesired behavior. Things I've tested: Opening WSL from Powershell opens WSL at whatever directory Powershell was in; opening WSL using the "Open WSL Here" context menu option opens WSL at that directory. 
+
+5. **(Optional) Add an icon**
 
    1. Navigate to the same key we in we used in step 2.2:
 
@@ -64,7 +96,7 @@ In this blog post I will explain how I added an 'Open WSL here' context menu in 
 
 ## Environment details
 
-To give some context: I'm on **Windows 11**, and I installed Windows Terminal from the Microsoft Store. That means `wt.exe` is really just an alias in:
+To give some context: I'm on **Windows 11**, and I installed **Windows Terminal from the Microsoft Store**. That means `wt.exe` is really just an alias for:
 
 ```text
 C:\Users\<you>\AppData\Local\Microsoft\WindowsApps\wt.exe
@@ -72,7 +104,7 @@ C:\Users\<you>\AppData\Local\Microsoft\WindowsApps\wt.exe
 
 If I had installed Windows Terminal by downloading the executable installer the traditional way from the [Microsoft website](https://apps.microsoft.com/detail/9n0dx20hk701?hl=en-US&gl=US), I'd have a real binary at `C:\Program Files\Windows Terminal\wt.exe` and none of the alias drama below would have been an issue.
 
-**Tip:** Before beginning, check if you can open Windows Terminal by pressing **Win + R**, typing `wt.exe`, and hitting Enter. If it doesn't launch, read on.
+**Tip:** Before beginning, check if you can open Windows Terminal by pressing **Win + R**, typing `wt.exe`, and hitting Enter. If it opens you don't need to provide the full path to the `wt.exe` executable when you write your registry key command, unlike me.
 
 ## Why I worked under HKEY_CURRENT_USER instead of HKEY_CLASSES_ROOT
 
@@ -107,7 +139,9 @@ My first working command was:
 wsl.exe -d Ubuntu-24.04 --cd "%V"
 ```
 
-That dropped me into Ubuntu-24.04 correctly, but in the old console host, so the tab title stayed "cmd".
+That dropped me into Ubuntu-24.04 correctly, but in the old console host, so the tab title and icon as the command prompt's, which looks ugly and that really bothered me.
+This behaviour is due to the fact that the command is being run from command prompt when you run `wsl`. Here's an example of what happens when you open WSL from Powershell, showing the same behaviour (notice that the tab name and icon stay as the powershell tab name and icon)
+![powershell](images/wrong-tab-title.gif)
 
 Next, I changed it to:
 
@@ -131,7 +165,7 @@ I ran `(Get-Command wt.exe).Source` to get the full path to the real EXE, then u
 "C:\Users\ray\AppData\Local\Microsoft\WindowsApps\wt.exe" -p "Ubuntu 24.04.1 LTS" -d "%V"
 ```
 
-After restarting Explorer, Shift + Right-Click on any folder background and choosing **Open WSL here** fires up Windows Terminal directly into Ubuntu-24.04, with the proper tab title and no extra console windows.
+After restarting Explorer, Shift + Right-Click on any folder background and choosing **Open WSL here** fires up Windows Terminal directly into Ubuntu-24.04, with the proper tab title and no extra console windows, but at the wrong directory! I found that by changing the "command line" setting from `ubuntu2404.exe` to `C:\Windows\system32\wsl.exe -d Ubuntu-24.04` I could solve the issue. I guess the problem is with accessing the `ubuntu2404.exe` executable directly instead of going through `wsl.exe` as a middle-man.
 
 ---
 
@@ -142,3 +176,4 @@ After restarting Explorer, Shift + Right-Click on any folder background and choo
 * Use `%V` for background clicks
 * Find the real `wt.exe` path with `(Get-Command wt.exe).Source`
 * Point your context-menu command at that full path for a clean launch
+* Change 'command line' option from your Linux executable to `C:\Windows\system32\wsl.exe -d ProfileName`
