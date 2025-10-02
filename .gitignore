@@ -24,3 +24,6 @@ package-lock.json
 .vscode
 .cursorrules
 .cursor
+
+# web stuff that idk about 
+package.json
