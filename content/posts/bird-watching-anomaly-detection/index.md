@@ -54,7 +54,8 @@ Before diving into the technical details, I should mention the constraints I set
 - AWS Lambda has a generous free tier!
 - AWS S3 also has a generous free tier, so I didn't spend any money here
 
-These constraints actually forced me to be more creative with my solution. Instead of buying specialized wildlife cameras or motion sensors, I had to work with what I had and leverage cloud services that offer free tiers for small-scale projects like this. 
+These constraints actually forced me to be more creative with my solution. 
+Instead of buying specialized wildlife cameras or motion sensors, I had to work with what I had and leverage cloud services that offer free tiers for small-scale projects like this. 
 
 ## Convolutional Autoencoder (offline, no alert system, more reliable)
 

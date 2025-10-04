@@ -2,3 +2,6 @@
 	path = themes/blowfish
 	url = https://github.com/nunocoracao/blowfish.git
 	branch = main
+[submodule "content/posts/gamblers-ruin/gamblers-ruin-marimo"]
+	path = content/posts/gamblers-ruin/gamblers-ruin-marimo
+	url = https://github.com/rayhagimoto/gamblers-ruin-blog-marimo
