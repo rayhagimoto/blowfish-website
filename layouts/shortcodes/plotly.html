@@ -1,0 +1,57 @@
+{{- $src := .Get "src" -}}
+{{- $width := .Get "width" | default "100%" -}}
+{{- $height := .Get "height" | default "600px" -}}
+{{- $title := .Get "title" | default "" -}}
+
+{{- if $title -}}
+<div class="plotly-container">
+  <h3 class="plotly-title">{{ $title }}</h3>
+{{- end -}}
+
+<div class="plotly-wrapper" style="width: {{ $width }}; height: {{ $height }}; margin: 1rem 0;">
+  {{- $plotPath := printf "static/plots/%s" $src -}}
+  {{- $plotContent := readFile $plotPath -}}
+  {{- if $plotContent -}}
+    {{- $plotContent | replaceRE `<html>.*?<body[^>]*>` "" | replaceRE `</body>.*?</html>` "" | safeHTML -}}
+  {{- else -}}
+    <p class="error">Plot not found: {{ $plotPath }}</p>
+  {{- end -}}
+</div>
+
+{{- if $title -}}
+</div>
+{{- end -}}
+
+<style>
+.plotly-container {
+  margin: 2rem 0;
+}
+
+.plotly-title {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.plotly-wrapper {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.plotly-wrapper .plotly-graph-div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.error {
+  color: #dc2626;
+  text-align: center;
+  padding: 2rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+</style>
