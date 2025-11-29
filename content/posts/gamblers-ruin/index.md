@@ -1,5 +1,5 @@
 ---
-date: 2024-12-31
+date: 2025-10-03
 draft: false
 title: Drunken Walk / Gambler's Ruin
 ---
@@ -89,9 +89,17 @@ Hence, when we take the limit of small steps, but keep the amount of distance tr
 Of course, when I needed it the most, I didn't have the intuition above because I panicked.
 I was able to come up with the explanation above by doing my favourite past-time activity: writing up Monte Carlo simulations 😀
 
+I generated 3 simulations of paths taken for each value of \(dx\) and plotted them in the figure below, along with the expected value \(X_n = x_\mathrm{init} + n (p - q) dx\). 
+By adjusting the slider at the bottom of the figure you can switch between \(dx = 0.1, 10\), and \(100\) to see how the step size affects the 'stability' of escape attempts.
+
+
+{{< plotly src="gamblers-ruin-interactive.html" title="Interactive Monte Carlo Simulations: Effect of Step Size on Escape Probability" height="500px" >}}
+
+
+
 ## In-depth solution
 
-In this section I'll share a more complicated solution which is how I originally understood this prooblem, but it's too long and impractical to use in an interview setting unless you happen to memorize the final answer (which I never do).
+In this section I'll share a more complicated solution which is how I originally understood this problem, but it's too long and impractical to use in an interview setting unless you happen to memorize the final answer (which I never do).
 
 Let's forget about the original problem statement for now, and just treat it like a Markov process with absorbing boundary conditions at \\(x_\mathrm{low} = 0\\) and \\(x_\mathrm{high} = 1000\\). 
 Fix the step size \\(\Delta x\\) and define the grid of valid states as \\(\{x_k = k \Delta x : k = 1, 2, \dots N \}\\), where \\(N \equiv x_\mathrm{high} / \Delta x\\). 
