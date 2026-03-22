@@ -9,12 +9,57 @@
     <div id="masonry-gallery" class="px-4 mx-auto" style="max-width:1600px">
       {{ range $i, $img := $images }}
       {{ $thumb := $img.Resize "600x webp" }}
+      {{ $baseName := replaceRE `\.[^.]+$` "" (path.Base $img.Name) }}
+      {{ $metaPath := printf "img/gallery/%s.yaml" $baseName }}
+      {{ $metaResource := resources.Get $metaPath }}
+      {{- $meta := dict }}
+      {{- if $metaResource }}
+        {{- $meta = $metaResource.Content | transform.Unmarshal }}
+      {{- end }}
+      {{/* Extract EXIF data from the original image */}}
+      {{- $exif := $img.Exif }}
+      {{- $exifDate := "" }}
+      {{- $exifFocal := "" }}
+      {{- $exifLens := "" }}
+      {{- $exifISO := "" }}
+      {{- $exifShutter := "" }}
+      {{- if $exif }}
+        {{- with $exif.Date }}
+          {{- $exifDate = .Format "2006-01-02" }}
+        {{- end }}
+        {{- with $exif.Tags.FocalLength }}
+          {{- $exifFocal = printf "%vmm" (int (math.Round .)) }}
+        {{- end }}
+        {{- with $exif.Tags.LensModel }}
+          {{- $exifLens = . }}
+        {{- end }}
+        {{- with $exif.Tags.ISO }}
+          {{- $exifISO = printf "%v" . }}
+        {{- end }}
+        {{- with $exif.Tags.ExposureTime }}
+          {{- $exifShutter = printf "%vs" . }}
+        {{- end }}
+      {{- end }}
+      {{/* YAML values override EXIF */}}
+      {{- $date := $meta.date | default $exifDate }}
+      {{- $focalLength := $meta.focal_length | default $exifFocal }}
+      {{- $lens := $meta.lens | default $exifLens }}
+      {{- $iso := $meta.iso | default $exifISO }}
+      {{- $shutter := $meta.shutter_speed | default $exifShutter }}
       <div class="gallery-item"
            data-src="{{ $thumb.RelPermalink }}"
            data-full-src="{{ $img.RelPermalink }}"
            data-w="{{ $thumb.Width }}"
-           data-h="{{ $thumb.Height }}">
-        <img alt="photo {{ $i }}">
+           data-h="{{ $thumb.Height }}"
+           {{- with $meta.title }} data-title="{{ . }}"{{ end }}
+           {{- with $meta.description }} data-description="{{ . }}"{{ end }}
+           {{- with $date }} data-date="{{ . }}"{{ end }}
+           {{- with $meta.location }} data-location="{{ . }}"{{ end }}
+           {{- with $focalLength }} data-focal-length="{{ . }}"{{ end }}
+           {{- with $lens }} data-lens="{{ . }}"{{ end }}
+           {{- with $iso }} data-iso="{{ . }}"{{ end }}
+           {{- with $shutter }} data-shutter="{{ . }}"{{ end }}>
+        <img alt="{{ $meta.title | default (printf "photo %d" $i) }}">
       </div>
       {{ end }}
     </div>

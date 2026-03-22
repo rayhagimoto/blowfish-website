@@ -63,17 +63,60 @@
     overlay.style.cssText = [
       'position:fixed', 'inset:0', 'z-index:9999',
       'background:rgba(0,0,0,0.95)',
-      'display:flex', 'align-items:center', 'justify-content:center',
+      'display:flex', 'flex-direction:column',
+      'align-items:center', 'justify-content:center',
       'opacity:0', 'transition:opacity 0.3s ease',
+    ].join(';');
+
+    var imgWrap = document.createElement('div');
+    imgWrap.style.cssText = [
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'flex:1', 'min-height:0', 'width:100%',
     ].join(';');
 
     var img = document.createElement('img');
     img.style.cssText = [
-      'max-width:90vw', 'max-height:90vh',
+      'max-width:90vw', 'max-height:calc(90vh - 80px)',
       'object-fit:contain',
       'transform-origin:center',
       'user-select:none',
     ].join(';');
+
+    // Metadata panel
+    var metaPanel = document.createElement('div');
+    metaPanel.style.cssText = [
+      'width:100%', 'max-width:90vw',
+      'padding:0.75rem 1.5rem', 'box-sizing:border-box',
+      'text-align:center', 'flex-shrink:0',
+      'transition:opacity 0.2s ease',
+    ].join(';');
+
+    var metaTitle = document.createElement('div');
+    metaTitle.style.cssText = [
+      'font-size:1.0rem', 'font-weight:600',
+      'color:rgba(255,255,255,0.95)',
+      'line-height:1.4',
+    ].join(';');
+
+    var metaDesc = document.createElement('div');
+    metaDesc.style.cssText = [
+      'font-size:1.0rem', 'font-weight:400',
+      'color:rgba(255,255,255,0.75)',
+      'line-height:1.4', 'margin-top:0.1rem',
+    ].join(';');
+
+    var metaDetails = document.createElement('div');
+    metaDetails.style.cssText = [
+      'font-size:0.8rem', 'font-weight:400',
+      'color:rgba(255,255,255,0.45)',
+      'line-height:1.4', 'margin-top:0.35rem',
+    ].join(';');
+
+    metaPanel.appendChild(metaTitle);
+    metaPanel.appendChild(metaDesc);
+    metaPanel.appendChild(metaDetails);
+
+    imgWrap.appendChild(img);
 
     function makeBtn(html, posCSS) {
       var b = document.createElement('button');
@@ -100,7 +143,8 @@
     var nextBtn  = makeBtn('&#10095;', 'right:1.5rem;top:50%;transform:translateY(-50%);font-size:2rem;padding:0.75rem 1rem');
     var closeBtn = makeBtn('&#10005;', 'top:1.5rem;right:1.5rem;font-size:1.5rem;padding:0.5rem 0.75rem');
 
-    overlay.appendChild(img);
+    overlay.appendChild(imgWrap);
+    overlay.appendChild(metaPanel);
     overlay.appendChild(prevBtn);
     overlay.appendChild(nextBtn);
     overlay.appendChild(closeBtn);
@@ -132,7 +176,7 @@
 
     // Click background: zoom out if zoomed, close if not
     overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) {
+      if (e.target === overlay || e.target === imgWrap) {
         if (scale > 1) reset(); else closeLB();
       }
     });
@@ -196,6 +240,9 @@
 
     lbImg   = img;
     lbReset = reset;
+    lbMetaTitle = metaTitle;
+    lbMetaDesc = metaDesc;
+    lbMetaDetails = metaDetails;
     return overlay;
   }
 
@@ -224,12 +271,46 @@
     preloadNeighbors(currentIdx);
   }
 
+  var lbMetaTitle = null;
+  var lbMetaDesc = null;
+  var lbMetaDetails = null;
+
+  function isZoomLens(lensName) {
+    // A zoom lens has a focal range like "24-70mm" in the name
+    return /\d+\s*-\s*\d+\s*mm/i.test(lensName);
+  }
+
   function showLBImage(index) {
     lbReset();
     lbImg.style.transition = 'opacity 0.2s ease';
     lbImg.style.opacity = '0';
     lbImg.src = allItems[index].fullSrc;
     lbImg.onload = function () { lbImg.style.opacity = '1'; };
+
+    // Update metadata
+    var item = allItems[index];
+    if (lbMetaTitle) {
+      lbMetaTitle.textContent = item.meta.title || '';
+      lbMetaTitle.style.display = item.meta.title ? '' : 'none';
+    }
+    if (lbMetaDesc) {
+      lbMetaDesc.textContent = item.meta.description || '';
+      lbMetaDesc.style.display = item.meta.description ? '' : 'none';
+    }
+    if (lbMetaDetails) {
+      var parts = [];
+      if (item.meta.date) parts.push(item.meta.date);
+      if (item.meta.location) parts.push(item.meta.location);
+      // Show focal length only if lens is missing or lens is a zoom
+      if (item.meta.focalLength && (!item.meta.lens || isZoomLens(item.meta.lens))) {
+        parts.push(item.meta.focalLength);
+      }
+      if (item.meta.lens) parts.push(item.meta.lens);
+      if (item.meta.shutter) parts.push(item.meta.shutter);
+      if (item.meta.iso) parts.push('ISO ' + item.meta.iso);
+      lbMetaDetails.innerHTML = parts.join(' &nbsp;&middot;&nbsp; ');
+      lbMetaDetails.style.display = parts.length ? '' : 'none';
+    }
   }
 
   function preloadNeighbors(index) {
@@ -274,6 +355,16 @@
         h: +el.dataset.h,
         index: i,
         x: 0, y: 0,
+        meta: {
+          title:       el.dataset.title || '',
+          description: el.dataset.description || '',
+          date:        el.dataset.date || '',
+          location:    el.dataset.location || '',
+          focalLength: el.dataset.focalLength || '',
+          lens:        el.dataset.lens || '',
+          iso:         el.dataset.iso || '',
+          shutter:     el.dataset.shutter || '',
+        },
       };
     });
 
