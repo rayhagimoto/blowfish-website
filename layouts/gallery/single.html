@@ -46,6 +46,7 @@
       {{- $lens := $meta.lens | default $exifLens }}
       {{- $iso := $meta.iso | default $exifISO }}
       {{- $shutter := $meta.shutter_speed | default $exifShutter }}
+      {{- $albums := $meta.albums | default (slice "Japan") }}
       <div class="gallery-item"
            data-src="{{ $thumb.RelPermalink }}"
            data-full-src="{{ $img.RelPermalink }}"
@@ -59,7 +60,7 @@
            {{- with $lens }} data-lens="{{ . }}"{{ end }}
            {{- with $iso }} data-iso="{{ . }}"{{ end }}
            {{- with $shutter }} data-shutter="{{ . }}"{{ end }}
-           {{- with $meta.albums }} data-albums="{{ delimit . "," }}"{{ end }}>
+           data-albums="{{ delimit $albums "," }}">
         <img alt="{{ $meta.title | default (printf "photo %d" $i) }}">
       </div>
       {{ end }}

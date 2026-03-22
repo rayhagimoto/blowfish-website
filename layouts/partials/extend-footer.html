@@ -18,48 +18,8 @@
   });
 </script>
 
-{{/*  Gallery-specific fade-in script - only runs on gallery pages  */}}
-{{ if eq .RelPermalink "/gallery/" }}
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const zoomableImages = document.querySelectorAll("img:not(.nozoom)");
-
-    zoomableImages.forEach(img => {
-      img.classList.add("opacity-0", "transition-opacity", "duration-[3000ms]", "ease-in-out");
-
-      const fadeIn = () => {
-        // Measure vertical position
-        const topOffset = img.getBoundingClientRect().top + window.scrollY;
-
-        // Convert top offset to delay (adjust multiplier as needed)
-        const delay = topOffset * 0.5; // 0.3ms per pixel
-
-        setTimeout(() => {
-          void img.offsetHeight; // force reflow
-          img.classList.add("opacity-100");
-        }, delay);
-      };
-
-      if (img.complete) {
-        fadeIn();
-      } else {
-        img.addEventListener("load", fadeIn, { once: true });
-      }
-    });
-
-    // Optionally initialize mediumZoom after fade-ins
-    {{ if not .Site.Params.disableImageZoom | default true }}
-    setTimeout(() => {
-      mediumZoom(zoomableImages, {
-        margin: 24,
-        background: 'rgba(0,0,0,0.5)',
-        scrollOffset: 0,
-      });
-    }, 3000); // delay initialization until most animations are done
-    {{ end }}
-  });
-</script>
-{{ else }}
+{{/* Gallery page handles image loading/animation in gallery.js */}}
+{{ if ne .RelPermalink "/gallery/" }}
 <script>
   {{ if not .Site.Params.disableImageZoom | default true }}
   mediumZoom(document.querySelectorAll("img:not(.nozoom)"), {
