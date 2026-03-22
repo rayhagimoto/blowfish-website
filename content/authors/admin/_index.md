@@ -10,10 +10,10 @@ organizations:
     url: ""
 education:
   courses:
-    - course: PhD in Physics (December 2024)
+    - course: PhD in Physics (Dec 2024)
       institution: Rice University
       year: ""
-    - course: BSc in Physics
+    - course: BSc in Physics (May 2016)
       institution: University of Texas at San Antonio
       year: 2020
 email: ""
