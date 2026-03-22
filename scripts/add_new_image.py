@@ -32,6 +32,7 @@ SKELETON_YAML = """\
 title: # Americana Submarine
 description: # Under the loop, across from the CBOT
 location: # Chicago, IL
+albums: # [Chicago, Street]
 
 # Optional EXIF overrides (auto-read from image if omitted)
 # date: # 2026-02-23

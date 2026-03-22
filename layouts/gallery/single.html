@@ -58,7 +58,8 @@
            {{- with $focalLength }} data-focal-length="{{ . }}"{{ end }}
            {{- with $lens }} data-lens="{{ . }}"{{ end }}
            {{- with $iso }} data-iso="{{ . }}"{{ end }}
-           {{- with $shutter }} data-shutter="{{ . }}"{{ end }}>
+           {{- with $shutter }} data-shutter="{{ . }}"{{ end }}
+           {{- with $meta.albums }} data-albums="{{ delimit . "," }}"{{ end }}>
         <img alt="{{ $meta.title | default (printf "photo %d" $i) }}">
       </div>
       {{ end }}
