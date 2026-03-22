@@ -5,6 +5,7 @@ and references to $.recentPosts (because that variable is never defined and neve
 {{ $showMoreLinkDest := "/posts/" }}
 {{ with .Page }}
 {{ if .Site.Params.homepage.showRecent | default false }}
+<div class="home-recent-posts home-landing-recent-stage">
     {{ if index .Site.Params.homepage "showRecentItems" }}
         {{ $recentArticles = .Site.Params.homepage.showRecentItems }}
     {{ end }}
@@ -31,5 +32,6 @@ and references to $.recentPosts (because that variable is never defined and neve
         </a>
     </div>
 {{ end }}
+</div>
 {{ end }}
 {{ end }}

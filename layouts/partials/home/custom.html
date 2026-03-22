@@ -1,6 +1,6 @@
 {{ $disableImageOptimization := .Site.Params.disableImageOptimization | default false }}
 
-<div class="relative">
+<div class="relative home-landing-sequence">
     <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gray-100"></div>
     <div class="relative sm:overflow-hidden">
         <div class="fixed inset-x-0 top-0" style="z-index:-10">
@@ -22,17 +22,18 @@
             {{ if $homepageImage }}
                 {{ if not $disableImageOptimization }}
                     {{ $processedImage := $homepageImage.Resize (print ($.Site.Params.backgroundImageWidth | default "1200") "x") }}
-                    <div class="fixed inset-x-0 top-0 h-[1000px] single_hero_background nozoom"
-                         style="background-image:url({{ $processedImage.RelPermalink }});">
+                    <div class="fixed inset-0 single_hero_background nozoom home-landing-bg"
+                         data-bg-src="{{ $processedImage.RelPermalink }}"
+                         style="background-image:url({{ $processedImage.RelPermalink }}); background-size: cover; background-position: center center; background-repeat: no-repeat;">
                     </div>
                 {{ else }}
-                    <img class="w-full h-[1000px] object-cover m-0 nozoom" src="{{ $homepageImage.RelPermalink }}" role="presentation" style="margin: 0">
+                    <img class="fixed inset-0 w-screen h-screen object-cover m-0 nozoom home-landing-bg" src="{{ $homepageImage.RelPermalink }}" role="presentation" style="margin: 0">
                 {{ end }}
                 <div
-                    class="absolute inset-0 h-[1000px] bg-gradient-to-t from-neutral dark:from-neutral-800 to-transparent mix-blend-normal">
+                    class="fixed inset-0 bg-gradient-to-t from-neutral dark:from-neutral-800 to-transparent mix-blend-normal home-landing-overlay home-landing-overlay-primary">
                 </div>
                 <div
-                    class="opacity-60 absolute inset-0 h-[1000px] bg-gradient-to-t from-neutral dark:from-neutral-800 to-neutral-100 dark:to-neutral-800 mix-blend-normal">
+                    class="opacity-60 fixed inset-0 bg-gradient-to-t from-neutral dark:from-neutral-800 to-neutral-100 dark:to-neutral-800 mix-blend-normal home-landing-overlay home-landing-overlay-soft">
                 </div>
             {{ end }}
         </div>
@@ -51,6 +52,16 @@
 </script>
 {{ end }}
 </div>
-<div class="author-bio-text">
+<script>
+  (function () {
+    if (document.body) {
+      document.body.classList.add("home-landing-animating");
+    }
+  })();
+</script>
+<div class="author-bio-text home-landing-text-stage">
 {{ .Content }}
 </div>
+
+{{ $jsHomeLanding := resources.Get "js/home-landing.js" }}
+<script src="{{ $jsHomeLanding.RelPermalink }}"></script>

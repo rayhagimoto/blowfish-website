@@ -18,15 +18,20 @@
   });
 </script>
 
-{{/* Gallery page handles image loading/animation in gallery.js */}}
-{{ if ne .RelPermalink "/gallery/" }}
+{{/* partialCached means page-specific Hugo conditionals are unsafe here.
+Use runtime checks (URL/DOM) so script behavior is correct per page. */}}
 <script>
-  {{ if not .Site.Params.disableImageZoom | default true }}
-  mediumZoom(document.querySelectorAll("img:not(.nozoom)"), {
-    margin: 24,
-    background: 'rgba(0,0,0,0.5)',
-    scrollOffset: 0,
-  })
-  {{ end }}
+  (function () {
+    var path = (window.location.pathname || "/").replace(/\/+$/, "/");
+    var isGallery = path === "/gallery/";
+    if (isGallery) return;
+
+    if (typeof mediumZoom === "function") {
+      mediumZoom(document.querySelectorAll("img:not(.nozoom)"), {
+        margin: 24,
+        background: "rgba(0,0,0,0.5)",
+        scrollOffset: 0,
+      });
+    }
+  })();
 </script>
-{{ end }}
