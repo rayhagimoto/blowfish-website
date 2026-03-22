@@ -181,3 +181,96 @@ article .prose{
     margin-bottom: 0em;
   }
 
+.album-overview {
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.album-overview-row {
+    margin-bottom: 2rem;
+}
+
+.album-overview-title {
+    display: inline-block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.album-overview-title:hover {
+    color: rgb(var(--color-primary-400));
+}
+
+.album-overview-count {
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.album-overview-track-shell {
+    position: relative;
+    margin-top: 0.75rem;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.album-overview-track {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    cursor: default;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.album-overview-track::-webkit-scrollbar {
+    display: none;
+}
+
+.album-overview-thumb {
+    flex: 0 0 auto;
+    height: min(var(--album-thumb-height, 300px), 60vw);
+    border: 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.album-overview-thumb img {
+    width: auto;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+}
+
+.album-overview-fade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 64px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.album-overview-fade-left {
+    left: 0;
+    background: linear-gradient(to right, var(--album-fade-color, rgba(0, 0, 0, 1)) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.album-overview-fade-right {
+    right: 0;
+    background: linear-gradient(to left, var(--album-fade-color, rgba(0, 0, 0, 1)) 0%, rgba(0, 0, 0, 0) 100%);
+}
+

@@ -6,6 +6,7 @@
   var STAGGER_MS = 200;
   var BATCH_WAIT_MS = 50;
   var ALBUM_MIN_THUMB_HEIGHT = 120;
+  var ALBUM_PREVIEW_THUMB_HEIGHT = 300;
   var ANIM_DURATION = 800;
   var ALBUM_TEXT_START_DELAY_MS = 0;
   var ALBUM_OVERLAY_ANIM_MS = 800;
@@ -26,9 +27,7 @@
 
   function getAlbumPreviewCount() {
     var w = window.innerWidth;
-    if (w < 640) return 2;
-    if (w < 1024) return 3;
-    if (w < 1440) return 4;
+    if (w < 768) return 2;
     return 5;
   }
 
@@ -560,17 +559,208 @@
         map[album].push(item);
       });
     });
-    // Sort each album's items by their original index (filename order)
+    // Sort each album's items by filename, then stable index.
     Object.keys(map).forEach(function (k) {
-      map[k].sort(function (a, b) { return a.index - b.index; });
+      map[k].sort(function (a, b) {
+        var nameCmp = a.fileName.localeCompare(b.fileName);
+        if (nameCmp !== 0) return nameCmp;
+        return a.index - b.index;
+      });
     });
     return map;
+  }
+
+  function getSortedAlbumNames(albums) {
+    var names = Object.keys(albums);
+    return names.sort(function (a, b) {
+      var itemsA = albums[a] || [];
+      var itemsB = albums[b] || [];
+      var firstA = itemsA.length ? itemsA[0].fileName : '';
+      var firstB = itemsB.length ? itemsB[0].fileName : '';
+      var firstCmp = firstA.localeCompare(firstB);
+      if (firstCmp !== 0) return firstCmp;
+      return a.localeCompare(b);
+    });
   }
 
   // ── Album view helpers ────────────────────────────────────────────────
   function getPageBgColor() {
     var bg = getComputedStyle(document.body).backgroundColor;
     return bg || 'rgb(0,0,0)';
+  }
+
+  function updateAlbumRowFades(viewport, leftFade, rightFade) {
+    var maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    var hasOverflow = maxScroll > 1;
+    if (!hasOverflow) {
+      leftFade.style.opacity = '0';
+      rightFade.style.opacity = '0';
+      return;
+    }
+
+    leftFade.style.opacity = viewport.scrollLeft > 1 ? '1' : '0';
+    rightFade.style.opacity = viewport.scrollLeft < (maxScroll - 1) ? '1' : '0';
+  }
+
+  function makeAlbumDragScrollable(viewport) {
+    var pointerDown = false;
+    var startX = 0;
+    var startScrollLeft = 0;
+    var dragged = false;
+
+    viewport.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      pointerDown = true;
+      dragged = false;
+      startX = e.clientX;
+      startScrollLeft = viewport.scrollLeft;
+      viewport.style.cursor = 'grabbing';
+      viewport.setPointerCapture(e.pointerId);
+    });
+
+    viewport.addEventListener('pointermove', function (e) {
+      if (!pointerDown) return;
+      var deltaX = e.clientX - startX;
+      if (Math.abs(deltaX) > 3) dragged = true;
+      if (dragged) {
+        viewport.scrollLeft = startScrollLeft - deltaX;
+        e.preventDefault();
+      }
+    });
+
+    function endDrag() {
+      if (!pointerDown) return;
+      pointerDown = false;
+      viewport.style.cursor = viewport.classList.contains('is-scrollable') ? 'grab' : 'default';
+      if (dragged) {
+        viewport.dataset.suppressClick = '1';
+        setTimeout(function () {
+          viewport.dataset.suppressClick = '0';
+        }, 0);
+      }
+    }
+
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
+    viewport.addEventListener('pointerleave', endDrag);
+    viewport.addEventListener('click', function (e) {
+      if (viewport.dataset.suppressClick === '1') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  }
+
+  function buildAlbumOverviewView() {
+    var albums = getAlbums();
+    var names = getSortedAlbumNames(albums);
+    var pageBg = getPageBgColor();
+
+    var wrap = document.createElement('div');
+    wrap.className = 'album-overview';
+    wrap.style.setProperty('--album-thumb-height', ALBUM_PREVIEW_THUMB_HEIGHT + 'px');
+    wrap.style.setProperty('--album-fade-color', pageBg);
+
+    var rows = [];
+    names.forEach(function (name) {
+      var items = albums[name] || [];
+      if (!items.length) return;
+
+      var row = document.createElement('section');
+      row.className = 'album-overview-row';
+
+      var title = document.createElement('a');
+      title.className = 'album-overview-title';
+      title.href = window.location.pathname + '?album=' + encodeURIComponent(name);
+      title.textContent = name;
+      title.addEventListener('click', function (e) {
+        e.preventDefault();
+        showAlbumDetail(name, { animated: false, pushHistory: true });
+      });
+
+      var count = document.createElement('div');
+      count.className = 'album-overview-count';
+      count.textContent = items.length + ' photos';
+
+      var shell = document.createElement('div');
+      shell.className = 'album-overview-track-shell';
+
+      var viewport = document.createElement('div');
+      viewport.className = 'album-overview-track';
+
+      var leftFade = document.createElement('div');
+      leftFade.className = 'album-overview-fade album-overview-fade-left';
+
+      var rightFade = document.createElement('div');
+      rightFade.className = 'album-overview-fade album-overview-fade-right';
+
+      var thumbs = [];
+      var thumbAspects = [];
+      items.forEach(function (item, idx) {
+        var thumbBtn = document.createElement('button');
+        thumbBtn.type = 'button';
+        thumbBtn.className = 'album-overview-thumb';
+        thumbBtn.setAttribute('aria-label', 'Open photo ' + (idx + 1) + ' in ' + name);
+
+        var thumbImg = document.createElement('img');
+        thumbImg.src = item.src;
+        thumbImg.alt = item.meta.title || ('Photo ' + (idx + 1));
+        thumbImg.loading = 'lazy';
+
+        thumbBtn.addEventListener('click', function () {
+          openLB(idx, items);
+        });
+
+        thumbBtn.appendChild(thumbImg);
+        viewport.appendChild(thumbBtn);
+        thumbs.push(thumbBtn);
+        thumbAspects.push((item.w > 0 && item.h > 0) ? (item.w / item.h) : (4 / 3));
+      });
+
+      viewport.addEventListener('scroll', function () {
+        updateAlbumRowFades(viewport, leftFade, rightFade);
+      }, { passive: true });
+      makeAlbumDragScrollable(viewport);
+
+      shell.appendChild(viewport);
+      shell.appendChild(leftFade);
+      shell.appendChild(rightFade);
+      row.appendChild(title);
+      row.appendChild(count);
+      row.appendChild(shell);
+      wrap.appendChild(row);
+
+      rows.push({
+        viewport: viewport,
+        thumbs: thumbs,
+        thumbAspects: thumbAspects,
+        leftFade: leftFade,
+        rightFade: rightFade,
+        count: items.length,
+      });
+    });
+
+    function applyRowSizing() {
+      var thumbHeight = Math.min(ALBUM_PREVIEW_THUMB_HEIGHT, Math.max(140, Math.floor(window.innerWidth * 0.6)));
+      wrap.style.setProperty('--album-thumb-height', thumbHeight + 'px');
+      rows.forEach(function (row) {
+        row.thumbs.forEach(function (thumb, idx) {
+          var aspect = row.thumbAspects[idx] || (4 / 3);
+          var thumbW = Math.max(72, Math.round(aspect * thumbHeight));
+          thumb.style.flexBasis = thumbW + 'px';
+          thumb.style.width = thumbW + 'px';
+        });
+
+        var hasOverflow = (row.viewport.scrollWidth - row.viewport.clientWidth) > 1;
+        row.viewport.classList.toggle('is-scrollable', hasOverflow);
+        row.viewport.style.cursor = hasOverflow ? 'grab' : 'default';
+        updateAlbumRowFades(row.viewport, row.leftFade, row.rightFade);
+      });
+    }
+
+    wrap._applyRowSizing = applyRowSizing;
+    requestAnimationFrame(applyRowSizing);
+    return wrap;
   }
 
   // Overlay elements (labels, gradients, click targets) placed on the masonry container
@@ -956,61 +1146,23 @@
 
   // ── Masonry → Album animation (direct transition) ─────────────────────
   function showAlbumView() {
-    if (viewMode === 'albums') return;
+    if (viewMode === 'albums' && albumViewEl) return;
     viewMode = 'albums';
     updateToggleBtn();
+    clearAlbumOverlays();
     setContainerModeWidth('albums');
+    container.style.display = 'none';
+    container.style.opacity = '0';
 
-    container.style.overflow = 'hidden';
-
-    var layout = computeAlbumLayout();
-    var dur = ANIM_DURATION + 'ms';
-
-    container.style.transition = 'height ' + dur + ' ease-in-out';
-    container.style.height = layout.totalHeight + 'px';
-
-    allItems.forEach(function (item) {
-      var primaryAlbum = layout.itemPrimaryAlbum[item.index];
-      if (primaryAlbum) {
-        var row = layout.rows.find(function (r) { return r.name === primaryAlbum; });
-        if (row) {
-          var fanTarget = row.fanTargets[item.index];
-          if (fanTarget) {
-            var moveTransition = 'left ' + dur + ' ease-in-out, top ' + dur + ' ease-in-out, width ' + dur + ' ease-in-out, height ' + dur + ' ease-in-out';
-            if (!fanTarget.visible) {
-              moveTransition += ', opacity ' + dur + ' ease-in';
-            }
-            item.el.style.transition = moveTransition;
-            item.el.style.left = fanTarget.x + 'px';
-            item.el.style.top = fanTarget.y + 'px';
-            item.el.style.width = fanTarget.w + 'px';
-            item.el.style.height = fanTarget.h + 'px';
-            item.el.style.zIndex = fanTarget.visible ? '3' : '1';
-            item.el.style.opacity = fanTarget.visible ? '1' : '0';
-          }
-        }
-      } else {
-        item.el.style.transition = 'left ' + dur + ' ease-in-out, opacity ' + dur + ' ease-in';
-        var ot = layout.orphanTargets[item.index];
-        item.el.style.left = (ot ? ot.x : (layout.boundedOffsetX + layout.boundedWidth + 50)) + 'px';
-        item.el.style.opacity = '0';
-        item.el.style.zIndex = '0';
-      }
+    if (albumViewEl) albumViewEl.remove();
+    albumViewEl = buildAlbumOverviewView();
+    albumViewEl.style.opacity = '0';
+    container.parentNode.insertBefore(albumViewEl, container.nextSibling);
+    requestAnimationFrame(function () {
+      if (!albumViewEl) return;
+      albumViewEl.style.opacity = '1';
+      if (albumViewEl._applyRowSizing) albumViewEl._applyRowSizing();
     });
-
-    // Start overlays slightly before thumbnails finish their move.
-    setTimeout(function () {
-      addAlbumOverlays(layout, { trackMs: ALBUM_OVERLAY_LEAD_MS + 80 });
-    }, Math.max(0, ANIM_DURATION - ALBUM_OVERLAY_LEAD_MS));
-
-    // Cleanup transition styles after item transitions complete.
-    setTimeout(function () {
-      allItems.forEach(function (item) {
-        item.el.style.transition = '';
-      });
-      container.style.transition = '';
-      container.style.overflow = '';
-    }, ANIM_DURATION + 80);
   }
 
   // ── Album → Masonry animation ─────────────────────────────────────────
@@ -1018,84 +1170,25 @@
     if (viewMode === 'masonry') return;
     viewMode = 'masonry';
     setContainerModeWidth('masonry');
-
-    var priorAlbumLayout = computeAlbumLayout();
-    var hiddenByIndex = {};
-    priorAlbumLayout.rows.forEach(function (row) {
-      Object.keys(row.fanTargets).forEach(function (key) {
-        var target = row.fanTargets[key];
-        if (!target.visible) hiddenByIndex[parseInt(key, 10)] = true;
-      });
-    });
-    var hiddenItems = allItems
-      .filter(function (item) { return !!hiddenByIndex[item.index]; })
-      .sort(function (a, b) { return a.index - b.index; });
-
-    // Remove overlays immediately
     clearAlbumOverlays();
+    if (albumViewEl) {
+      var oldAlbumView = albumViewEl;
+      albumViewEl = null;
+      oldAlbumView.style.opacity = '0';
+      setTimeout(function () { oldAlbumView.remove(); }, 220);
+    }
+    container.style.display = '';
+    container.style.opacity = '1';
 
-    // Prepare items for return animation
     allItems.forEach(function (item) {
+      item.el.style.transition = '';
+      item.el.style.opacity = '1';
       item.el.style.zIndex = '';
       item.img.style.opacity = '1';
     });
 
     var cols = getColCount();
-    var masonry = computeMasonryTargets(container, allItems, cols);
-    var rightEntryX = priorAlbumLayout.boundedOffsetX + priorAlbumLayout.boundedWidth + GAP;
-
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        var dur = ANIM_DURATION + 'ms';
-
-        hiddenItems.forEach(function (item) {
-          item.el.style.transition = '';
-          item.el.style.left = rightEntryX + 'px';
-          item.el.style.opacity = '0';
-          item.el.style.zIndex = '1';
-        });
-
-        void container.offsetWidth;
-
-        allItems.forEach(function (item) {
-          var target = masonry.targets[item.index];
-          var isHidden = !!hiddenByIndex[item.index];
-          if (isHidden) {
-            // Hidden album items travel from the right lane while fading in.
-            item.el.style.transition =
-              'left ' + dur + ' ease-out, ' +
-              'top ' + dur + ' ease-out, ' +
-              'width ' + dur + ' ease-out, ' +
-              'height ' + dur + ' ease-out, ' +
-              'transform ' + dur + ' ease-out, ' +
-              'opacity ' + dur + ' ease-in';
-          } else {
-            item.el.style.transition =
-              'left ' + dur + ' ease-out, ' +
-              'top ' + dur + ' ease-out, ' +
-              'width ' + dur + ' ease-out, ' +
-              'height ' + dur + ' ease-out, ' +
-              'transform ' + dur + ' ease-out';
-          }
-          item.el.style.transform = '';
-          item.el.style.left = target.x + 'px';
-          item.el.style.top = target.y + 'px';
-          item.el.style.width = target.w + 'px';
-          item.el.style.height = target.h + 'px';
-          item.el.style.opacity = '1';
-        });
-        container.style.transition = 'height ' + dur + ' ease-in-out';
-        container.style.height = masonry.totalHeight + 'px';
-
-        setTimeout(function () {
-          allItems.forEach(function (item) {
-            item.el.style.transition = '';
-          });
-          container.style.transition = '';
-          container.style.overflow = '';
-        }, ANIM_DURATION + 50);
-      });
-    });
+    layoutMasonry(container, allItems, cols);
 
     if (window.history.replaceState) {
       window.history.replaceState(null, '', window.location.pathname);
@@ -1314,27 +1407,7 @@
     }
 
     setTimeout(function () {
-      // Restore masonry baseline first, then animate into album overview.
-      container.style.display = '';
-      container.style.opacity = '1';
-      clearAlbumOverlays();
-      allItems.forEach(function (item) {
-        item.el.style.transition = '';
-        item.el.style.opacity = '1';
-        item.el.style.zIndex = '';
-        if (!item.img.src) item.img.src = item.src;
-        item.img.style.opacity = '1';
-      });
-
-      setContainerModeWidth('masonry');
-      var cols = getColCount();
-      layoutMasonry(container, allItems, cols);
-      viewMode = 'masonry';
-      updateToggleBtn();
-
-      requestAnimationFrame(function () {
-        showAlbumView();
-      });
+      showAlbumView();
     }, 300);
 
     if (!skipHistory && window.history.replaceState) {
@@ -1421,6 +1494,9 @@
     allItems = Array.from(container.querySelectorAll('.gallery-item')).map(function (el, i) {
       el.style.cssText += ';position:absolute;overflow:hidden;border-radius:0.5rem;';
       var img = el.querySelector('img');
+      var fullSrc = el.dataset.fullSrc || '';
+      var fullPath = fullSrc.split('?')[0];
+      var fileName = fullPath.split('/').pop() || ('zzzz-' + i);
       Object.assign(img.style, {
         width: '100%', height: '100%',
         objectFit: 'cover',
@@ -1433,7 +1509,8 @@
         el: el,
         img: img,
         src:     el.dataset.src,
-        fullSrc: el.dataset.fullSrc,
+        fullSrc: fullSrc,
+        fileName: fileName.toLowerCase(),
         w: +el.dataset.w,
         h: +el.dataset.h,
         index: i,
@@ -1641,26 +1718,9 @@
           allItems.forEach(function (item) { item._observing = false; });
           unlockToViewport();
         } else if (viewMode === 'albums') {
-          clearAlbumOverlays();
-          container.style.transition = '';
-          var layout = computeAlbumLayout();
-          container.style.height = layout.totalHeight + 'px';
-          allItems.forEach(function (item) {
-            var primaryAlbum = layout.itemPrimaryAlbum[item.index];
-            if (primaryAlbum) {
-              var row = layout.rows.find(function (r) { return r.name === primaryAlbum; });
-              var fanTarget = row && row.fanTargets[item.index];
-              if (fanTarget) {
-                item.el.style.left = fanTarget.x + 'px';
-                item.el.style.top = fanTarget.y + 'px';
-                item.el.style.width = fanTarget.w + 'px';
-                item.el.style.height = fanTarget.h + 'px';
-                item.el.style.opacity = fanTarget.visible ? '1' : '0';
-                item.el.style.zIndex = fanTarget.visible ? '3' : '1';
-              }
-            }
-          });
-          addAlbumOverlays(layout);
+          if (albumViewEl && albumViewEl._applyRowSizing) {
+            albumViewEl._applyRowSizing();
+          }
         }
       }, 150);
     });
