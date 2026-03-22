@@ -61,7 +61,9 @@
            {{- with $iso }} data-iso="{{ . }}"{{ end }}
            {{- with $shutter }} data-shutter="{{ . }}"{{ end }}
            data-albums="{{ delimit $albums "," }}">
-        <img alt="{{ $meta.title | default (printf "photo %d" $i) }}">
+        <img
+          src="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA="
+          alt="{{ $meta.title | default (printf "photo %d" $i) }}">
       </div>
       {{ end }}
     </div>
