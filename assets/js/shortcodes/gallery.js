@@ -14,6 +14,7 @@
   var MASONRY_LOAD_BATCH_SIZE = 6;
   var MASONRY_PRELOAD_PX = 180;
   var MASONRY_UNLOCK_TRIGGER_PX = 180;
+  var MASONRY_ITEM_LOAD_TIMEOUT_MS = 10000;
   var LB_RAPID_NAV_MS = 135;
   var LB_FOCUS_SETTLE_MS = 200;
   var LB_FULL_IDLE_MS = 1200;
@@ -2532,15 +2533,25 @@
         item._loading = true;
         observer.unobserve(item.el);
 
+        var loadTimeout = null;
         var markReady = function () {
           if (item._loadHandled) return;
           item._loadHandled = true;
+          if (loadTimeout !== null) {
+            clearTimeout(loadTimeout);
+            loadTimeout = null;
+          }
+          item.img.onload = null;
+          item.img.onerror = null;
           item._readyToReveal = true;
           drainRevealQueue();
+          // If scroll momentum stopped at the unlock boundary, keep unlocking.
+          pumpUnlockNearViewport();
         };
         item.img.onload = markReady;
         item.img.onerror = markReady;
         item.img.src = item.src;
+        loadTimeout = setTimeout(markReady, MASONRY_ITEM_LOAD_TIMEOUT_MS);
         if (item.img.complete) {
           markReady();
         }
