@@ -277,16 +277,16 @@
       var im = new Image();
       im.src = url;
     }
-    [-1, 1].forEach(function (d) {
+    [1, 2, 3, 4, 5, -1, -2, -3, -4, -5].forEach(function (d) {
       var it = currentLBItems[wrapLbIndex(index + d)];
       if (!it) return;
       pre(it.lightboxSmallSrc || it.src);
+    });
+    [-1, 1].forEach(function (d) {
+      var it = currentLBItems[wrapLbIndex(index + d)];
+      if (!it) return;
       pre(it.lightboxMediumSrc || it.mediumSrc);
       pre(it.lightboxFitSrc);
-    });
-    [2, 3, 4, 5, -2, -3, -4, -5].forEach(function (d) {
-      var it = currentLBItems[wrapLbIndex(index + d)];
-      pre(it.src || it.mediumSrc);
     });
   }
 
@@ -330,13 +330,14 @@
     lbCarousel.style.cssText = [
       'flex:1', 'min-height:0', 'width:100%',
       'position:relative', 'overflow:hidden',
+      'display:flex', 'align-items:center', 'justify-content:center',
       'touch-action:none',
     ].join(';');
 
     var lbTrack = document.createElement('div');
     lbTrack.style.cssText = [
       'display:flex', 'flex-direction:row',
-      'height:100%', 'will-change:transform',
+      'height:100%', 'align-items:center', 'will-change:transform',
     ].join(';');
 
     function makeSlot() {
@@ -368,6 +369,7 @@
       'position:relative',
       'width:90vw', 'height:calc(90vh - 80px)',
       'display:inline-block',
+      'margin:0 auto',
       'transform-origin:center',
     ].join(';');
 
@@ -375,13 +377,13 @@
     var lbOverlay = document.createElement('img');
     lbBase.style.cssText = [
       'display:block', 'width:100%', 'height:100%',
-      'object-fit:contain',
+      'object-fit:contain', 'object-position:center center',
       'user-select:none', 'pointer-events:none',
     ].join(';');
     lbOverlay.style.cssText = [
       'position:absolute', 'left:0', 'top:0',
       'width:100%', 'height:100%',
-      'object-fit:contain', 'opacity:0',
+      'object-fit:contain', 'object-position:center center', 'opacity:0',
       'pointer-events:none', 'transition:opacity 0.22s ease',
     ].join(';');
     lbBase.draggable = false;
@@ -2361,6 +2363,12 @@
   function init() {
     container = document.getElementById('masonry-gallery');
     if (!container) return;
+    var galleryTitle = document.getElementById('gallery-page-title');
+    if (galleryTitle) {
+      // Ensure the page title scrolls with content on mobile.
+      galleryTitle.style.position = 'static';
+      galleryTitle.style.top = 'auto';
+    }
     document.documentElement.style.overflowX = 'hidden';
     document.body.style.overflowX = 'hidden';
 
