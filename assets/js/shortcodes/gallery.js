@@ -149,6 +149,7 @@
   var lbShowHelp = null;
   var currentIdx = 0;
   var currentLBItems = [];
+  var lbOpenToken = 0;
   var lbLoadToken = 0;
   var lbTierToken = 0;
   var lbSettleTimer = null;
@@ -1205,8 +1206,9 @@
   }
 
   function openLB(index, itemSet, thumbEl) {
+    var openToken = ++lbOpenToken;
     currentLBItems = itemSet || allItems;
-    currentIdx = index;
+    currentIdx = wrapLbIndex(index);
     if (!lb) lb = buildLightbox();
     lbLastNavAt = 0;
     lbSwipeCommitted = false;
@@ -1218,15 +1220,21 @@
       if (lb._noteMobileInteraction) lb._noteMobileInteraction();
     });
     if (thumbEl) {
-      var item = currentLBItems[currentIdx];
-      var seedSrc = thumbEl.currentSrc || thumbEl.src || item.src || '';
+      var requestedIdx = currentIdx;
+      var item = currentLBItems[requestedIdx];
+      var seedSrc = (item && (item.src || item.mediumSrc || item.lightboxSmallSrc)) || thumbEl.currentSrc || thumbEl.src || '';
+      // Render the clicked image immediately to avoid post-animation index/slot drift.
+      showLBImage(requestedIdx, { skipRapid: true, afterThumbAnim: true, seedSrc: seedSrc });
+      prefetchAroundIndex(requestedIdx);
       animateOpenFromThumb(thumbEl, item, function () {
-        showLBImage(currentIdx, { skipRapid: true, afterThumbAnim: true, seedSrc: seedSrc });
-        prefetchAroundIndex(currentIdx);
+        // Ignore stale async callbacks from older open attempts.
+        if (openToken !== lbOpenToken || !lb || lb.style.display === 'none') return;
+        currentIdx = requestedIdx;
       });
     } else {
-      showLBImage(currentIdx, {});
-      prefetchAroundIndex(currentIdx);
+      var directIdx = currentIdx;
+      showLBImage(directIdx, {});
+      prefetchAroundIndex(directIdx);
     }
   }
 
@@ -2558,9 +2566,24 @@
       });
     }, { rootMargin: '140px' });
 
+    function getWindowScrollY() {
+      return window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    }
+
     function getVisibleBottomInContainer() {
-      var containerTop = container.getBoundingClientRect().top + window.scrollY;
-      return (window.scrollY - containerTop) + window.innerHeight;
+      var scrollY = getWindowScrollY();
+      var containerTop = container.getBoundingClientRect().top + scrollY;
+      return (scrollY - containerTop) + window.innerHeight;
+    }
+
+    function isAtDocumentBottom() {
+      var scrollY = getWindowScrollY();
+      var viewportBottom = scrollY + window.innerHeight;
+      var docBottom = Math.max(
+        document.body.scrollHeight || 0,
+        document.documentElement.scrollHeight || 0
+      );
+      return viewportBottom >= (docBottom - 2);
     }
 
     function applyUnlockedHeight() {
@@ -2616,17 +2639,30 @@
       }
     }
 
+    // Fallback for layouts/browsers where container-relative math can miss:
+    // if user reaches document bottom, keep releasing batches so scrolling can continue.
+    function pumpUnlockAtDocumentBottom() {
+      var guard = 0;
+      while (guard < 64 && unlockedCount < loadOrder.length && isAtDocumentBottom()) {
+        if (!unlockNextBatch()) break;
+        guard += 1;
+      }
+    }
+
     unlockToViewport();
     pumpUnlockNearViewport();
+    pumpUnlockAtDocumentBottom();
 
     window.addEventListener('scroll', function () {
       if (viewMode !== 'masonry') return;
       unlockToTargetBottom(getVisibleBottomInContainer() + MASONRY_PRELOAD_PX);
       pumpUnlockNearViewport();
+      pumpUnlockAtDocumentBottom();
     }, { passive: true });
     window.addEventListener('touchend', function () {
       if (viewMode !== 'masonry') return;
       pumpUnlockNearViewport();
+      pumpUnlockAtDocumentBottom();
     }, { passive: true });
 
     var resizeTimer;
@@ -2645,6 +2681,7 @@
           allItems.forEach(function (item) { item._observing = false; });
           unlockToViewport();
           pumpUnlockNearViewport();
+          pumpUnlockAtDocumentBottom();
         } else if (viewMode === 'albums') {
           if (albumViewEl && albumViewEl._applyRowSizing) {
             albumViewEl._applyRowSizing();
