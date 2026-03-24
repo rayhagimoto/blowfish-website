@@ -23,7 +23,7 @@
   // ── Responsive column count ────────────────────────────────────────────────
   function getColCount() {
     var w = window.innerWidth;
-    if (w < 640) return 1;
+    if (w < 640) return 2;
     if (w < 768) return 2;
     if (w < 1024) return 3;
     if (w < 1280) return 4;
