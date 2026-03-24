@@ -602,24 +602,56 @@
       var probe = new Image();
       probe.onload = function () {
         if (tierToken !== lbTierToken) return;
+        var baseRect = lbBase.getBoundingClientRect();
+        if (baseRect.width > 0 && baseRect.height > 0) {
+          // Lock stack size while swapping src so the currently visible preview
+          // doesn't collapse before the full-res layer finishes crossfading.
+          lbStack.style.width = baseRect.width + 'px';
+          lbStack.style.height = baseRect.height + 'px';
+        }
+
+        var fadeInHandled = false;
+        var finishFadeIn = function () {
+          if (fadeInHandled) return;
+          fadeInHandled = true;
+          if (tierToken !== lbTierToken) return;
+
+          lbBase.onload = function () {
+            if (tierToken !== lbTierToken) return;
+            lbOverlay.style.opacity = '0';
+            setTimeout(function () {
+              if (tierToken !== lbTierToken) return;
+              lbOverlay.removeAttribute('src');
+              lbStack.style.width = '';
+              lbStack.style.height = '';
+              if (onDone) onDone();
+            }, 180);
+          };
+          lbBase.src = url;
+          if (lbBase.complete) lbBase.onload();
+        };
+
         lbOverlay.onload = function () {
           if (tierToken !== lbTierToken) return;
-          lbOverlay.style.opacity = '1';
+          lbOverlay.style.opacity = '0';
           requestAnimationFrame(function () {
             if (tierToken !== lbTierToken) return;
-            lbBase.src = url;
-            lbBase.onload = function () {
-              if (tierToken !== lbTierToken) return;
-              lbOverlay.style.opacity = '0';
-              lbOverlay.removeAttribute('src');
-              if (onDone) onDone();
-            };
-            if (lbBase.complete) lbBase.onload();
+            lbOverlay.style.opacity = '1';
+            setTimeout(finishFadeIn, 240);
           });
+        };
+        lbOverlay.onerror = function () {
+          if (tierToken !== lbTierToken) return;
+          lbStack.style.width = '';
+          lbStack.style.height = '';
+          if (onDone) onDone();
         };
         lbOverlay.src = url;
       };
-      probe.onerror = function () { if (onDone) onDone(); };
+      probe.onerror = function () {
+        if (tierToken !== lbTierToken) return;
+        if (onDone) onDone();
+      };
       probe.src = url;
     }
 
