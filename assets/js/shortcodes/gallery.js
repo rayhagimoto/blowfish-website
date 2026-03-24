@@ -2585,11 +2585,29 @@
       unlockToTargetBottom(getVisibleBottomInContainer() + MASONRY_PRELOAD_PX);
     }
 
+    function isNearUnlockedBoundary() {
+      return (getVisibleBottomInContainer() + MASONRY_UNLOCK_TRIGGER_PX) >= unlockedBottom;
+    }
+
+    function pumpUnlockNearViewport() {
+      var guard = 0;
+      while (guard < 64 && unlockedCount < loadOrder.length && isNearUnlockedBoundary()) {
+        if (!unlockNextBatch()) break;
+        guard += 1;
+      }
+    }
+
     unlockToViewport();
+    pumpUnlockNearViewport();
 
     window.addEventListener('scroll', function () {
       if (viewMode !== 'masonry') return;
       unlockToTargetBottom(getVisibleBottomInContainer() + MASONRY_PRELOAD_PX);
+      pumpUnlockNearViewport();
+    }, { passive: true });
+    window.addEventListener('touchend', function () {
+      if (viewMode !== 'masonry') return;
+      pumpUnlockNearViewport();
     }, { passive: true });
 
     var resizeTimer;
@@ -2607,6 +2625,7 @@
           observer.disconnect();
           allItems.forEach(function (item) { item._observing = false; });
           unlockToViewport();
+          pumpUnlockNearViewport();
         } else if (viewMode === 'albums') {
           if (albumViewEl && albumViewEl._applyRowSizing) {
             albumViewEl._applyRowSizing();
