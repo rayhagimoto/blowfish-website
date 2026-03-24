@@ -173,7 +173,9 @@
   }
 
   function getPreviewTierMap(item) {
-    var mediumPixels = (item && item.mediumW > 0 && item.mediumH > 0) ? (item.mediumW * item.mediumH) : 0;
+    var mediumPixels = (item && item.lightboxMediumW > 0 && item.lightboxMediumH > 0)
+      ? (item.lightboxMediumW * item.lightboxMediumH)
+      : ((item && item.mediumW > 0 && item.mediumH > 0) ? (item.mediumW * item.mediumH) : 0);
     var fitPixels = (item && item.lightboxFitW > 0 && item.lightboxFitH > 0) ? (item.lightboxFitW * item.lightboxFitH) : 0;
     var fitIsHighest = fitPixels >= mediumPixels;
     return {
@@ -188,6 +190,7 @@
     if (normalizeLbUrl(item.fullSrc) === nUrl) return LB_TIER_FULL;
     if (normalizeLbUrl(item.src) === nUrl) return LB_TIER_SMALL;
     var previewTiers = getPreviewTierMap(item);
+    if (normalizeLbUrl(item.lightboxMediumSrc) === nUrl) return previewTiers.medium;
     if (normalizeLbUrl(item.mediumSrc) === nUrl) return previewTiers.medium;
     if (normalizeLbUrl(item.lightboxFitSrc) === nUrl) return previewTiers.fit;
     return LB_TIER_NONE;
@@ -228,7 +231,13 @@
 
   function getLightboxPreviewSrc(item) {
     if (!item) return '';
-    return item.lightboxFitSrc || item.mediumSrc || item.src || item.fullSrc || '';
+    return item.lightboxFitSrc
+      || item.lightboxMediumSrc
+      || item.lightboxSmallSrc
+      || item.mediumSrc
+      || item.src
+      || item.fullSrc
+      || '';
   }
 
   function wrapLbIndex(i) {
@@ -255,8 +264,8 @@
     [-1, 1].forEach(function (d) {
       var it = currentLBItems[wrapLbIndex(index + d)];
       if (!it) return;
-      pre(it.src);
-      pre(it.mediumSrc);
+      pre(it.lightboxSmallSrc || it.src);
+      pre(it.lightboxMediumSrc || it.mediumSrc);
       pre(it.lightboxFitSrc);
     });
     [2, 3, 4, 5, -2, -3, -4, -5].forEach(function (d) {
@@ -1194,13 +1203,13 @@
     var initialUrl;
     if (opts.afterThumbAnim) {
       initialUrl = mobileViewport
-        ? (item.src || item.mediumSrc || item.lightboxFitSrc || item.fullSrc)
+        ? (item.lightboxSmallSrc || item.src || item.lightboxMediumSrc || item.lightboxFitSrc || item.fullSrc)
         : (getLightboxPreviewSrc(item) || item.fullSrc);
     } else if (rapid) {
-      initialUrl = item.src || item.mediumSrc || item.lightboxFitSrc || item.fullSrc;
+      initialUrl = (item.lightboxSmallSrc || item.src || item.lightboxMediumSrc || item.lightboxFitSrc || item.fullSrc);
     } else {
       initialUrl = mobileViewport
-        ? (item.src || item.mediumSrc || item.lightboxFitSrc || item.fullSrc)
+        ? (item.lightboxSmallSrc || item.src || item.lightboxMediumSrc || item.lightboxFitSrc || item.fullSrc)
         : (getLightboxPreviewSrc(item) || item.fullSrc);
     }
 
@@ -1247,12 +1256,12 @@
     function startMobilePreviewUpgrades() {
       if (!mobileViewport || !item) return;
       var seen = {};
-      var targets = [item.mediumSrc, item.lightboxFitSrc];
+      var targets = [item.lightboxMediumSrc || item.mediumSrc, item.lightboxFitSrc];
       targets.forEach(function (url) {
         if (!url) return;
         var normalized = normalizeLbUrl(url);
         if (!normalized || seen[normalized]) return;
-        if (normalized === normalizeLbUrl(item.src)) return;
+        if (normalized === normalizeLbUrl(item.lightboxSmallSrc || item.src)) return;
         seen[normalized] = true;
         var targetTier = getLbTierForUrl(item, url);
         if (targetTier <= LB_TIER_SMALL) return;
@@ -2329,6 +2338,8 @@
         img: img,
         src:     el.dataset.src,
         mediumSrc: el.dataset.mediumSrc || el.dataset.src,
+        lightboxSmallSrc: el.dataset.lightboxSmallSrc || el.dataset.src,
+        lightboxMediumSrc: el.dataset.lightboxMediumSrc || el.dataset.mediumSrc || el.dataset.src,
         lightboxFitSrc: el.dataset.lightboxFitSrc || el.dataset.mediumSrc || el.dataset.src,
         fullSrc: fullSrc,
         fileName: fileName.toLowerCase(),
@@ -2336,6 +2347,10 @@
         h: +el.dataset.h,
         mediumW: +el.dataset.mediumW || 0,
         mediumH: +el.dataset.mediumH || 0,
+        lightboxSmallW: +el.dataset.lightboxSmallW || 0,
+        lightboxSmallH: +el.dataset.lightboxSmallH || 0,
+        lightboxMediumW: +el.dataset.lightboxMediumW || +el.dataset.mediumW || 0,
+        lightboxMediumH: +el.dataset.lightboxMediumH || +el.dataset.mediumH || 0,
         lightboxFitW: +el.dataset.lightboxFitW || 0,
         lightboxFitH: +el.dataset.lightboxFitH || 0,
         fitW: +el.dataset.lightboxFitW || +el.dataset.mediumW || +el.dataset.w,
