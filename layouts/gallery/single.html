@@ -16,7 +16,6 @@
     {{ $galleryQ := site.Params.galleryWebpQuality | default 75 }}
     {{ $galleryFit := printf "%dx%d webp q%d" $gallerySmall $gallerySmall $galleryQ }}
     {{ $galleryMed := printf "%dx%d webp q%d" $galleryMedium $galleryMedium $galleryQ }}
-    {{ $galleryLbSmall := printf "x%d webp q%d" $gallerySmall $galleryQ }}
     {{ $galleryLbMedium := printf "x%d webp q%d" $galleryMedium $galleryQ }}
     {{ $galleryLb := printf "x%d webp q%d" $galleryLbH $galleryQ }}
 
@@ -24,7 +23,6 @@
       {{ range $i, $img := $images }}
       {{ $small := $img.Fit $galleryFit }}
       {{ $medium := $img.Fit $galleryMed }}
-      {{ $lightboxSmall := $img.Resize $galleryLbSmall }}
       {{ $lightboxMedium := $img.Resize $galleryLbMedium }}
       {{ $lightboxFit := $img.Resize $galleryLb }}
       {{ $baseName := replaceRE `\.[^.]+$` "" (path.Base $img.Name) }}
@@ -68,7 +66,7 @@
       <div class="gallery-item"
            data-src="{{ $small.RelPermalink }}"
            data-medium-src="{{ $medium.RelPermalink }}"
-           data-lightbox-small-src="{{ $lightboxSmall.RelPermalink }}"
+           data-lightbox-small-src="{{ $small.RelPermalink }}"
            data-lightbox-medium-src="{{ $lightboxMedium.RelPermalink }}"
            data-lightbox-fit-src="{{ $lightboxFit.RelPermalink }}"
            data-full-src="{{ $img.RelPermalink }}"
@@ -76,8 +74,8 @@
            data-h="{{ $small.Height }}"
            data-medium-w="{{ $medium.Width }}"
            data-medium-h="{{ $medium.Height }}"
-           data-lightbox-small-w="{{ $lightboxSmall.Width }}"
-           data-lightbox-small-h="{{ $lightboxSmall.Height }}"
+           data-lightbox-small-w="{{ $small.Width }}"
+           data-lightbox-small-h="{{ $small.Height }}"
            data-lightbox-medium-w="{{ $lightboxMedium.Width }}"
            data-lightbox-medium-h="{{ $lightboxMedium.Height }}"
            data-lightbox-fit-w="{{ $lightboxFit.Width }}"

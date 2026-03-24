@@ -2386,7 +2386,7 @@
         img: img,
         src:     el.dataset.src,
         mediumSrc: el.dataset.mediumSrc || el.dataset.src,
-        lightboxSmallSrc: el.dataset.lightboxSmallSrc || el.dataset.src,
+        lightboxSmallSrc: el.dataset.src,
         lightboxMediumSrc: el.dataset.lightboxMediumSrc || el.dataset.mediumSrc || el.dataset.src,
         lightboxFitSrc: el.dataset.lightboxFitSrc || el.dataset.mediumSrc || el.dataset.src,
         fullSrc: fullSrc,
