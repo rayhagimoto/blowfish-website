@@ -6,9 +6,19 @@
     {{ $images := resources.Match "img/gallery/*.{jpg,jpeg,png,JPG,JPEG,PNG}" }}
     {{ $images = sort $images ".Name" "asc" }}
 
+    {{ $gallerySmall := site.Params.gallerySmallLongEdge | default 480 }}
+    {{ $galleryMedium := site.Params.galleryMediumLongEdge | default 960 }}
+    {{ $galleryLbH := site.Params.galleryLightboxFitHeight | default 1024 }}
+    {{ $galleryQ := site.Params.galleryWebpQuality | default 75 }}
+    {{ $galleryFit := printf "%dx%d webp q%d" $gallerySmall $gallerySmall $galleryQ }}
+    {{ $galleryMed := printf "%dx%d webp q%d" $galleryMedium $galleryMedium $galleryQ }}
+    {{ $galleryLb := printf "x%d webp q%d" $galleryLbH $galleryQ }}
+
     <div id="masonry-gallery" class="px-4 mx-auto" style="max-width:1600px">
       {{ range $i, $img := $images }}
-      {{ $thumb := $img.Resize "600x webp" }}
+      {{ $small := $img.Fit $galleryFit }}
+      {{ $medium := $img.Fit $galleryMed }}
+      {{ $lightboxFit := $img.Resize $galleryLb }}
       {{ $baseName := replaceRE `\.[^.]+$` "" (path.Base $img.Name) }}
       {{ $metaPath := printf "img/gallery/%s.yaml" $baseName }}
       {{ $metaResource := resources.Get $metaPath }}
@@ -48,10 +58,16 @@
       {{- $shutter := $meta.shutter_speed | default $exifShutter }}
       {{- $albums := $meta.albums | default (slice "Japan") }}
       <div class="gallery-item"
-           data-src="{{ $thumb.RelPermalink }}"
+           data-src="{{ $small.RelPermalink }}"
+           data-medium-src="{{ $medium.RelPermalink }}"
+           data-lightbox-fit-src="{{ $lightboxFit.RelPermalink }}"
            data-full-src="{{ $img.RelPermalink }}"
-           data-w="{{ $thumb.Width }}"
-           data-h="{{ $thumb.Height }}"
+           data-w="{{ $small.Width }}"
+           data-h="{{ $small.Height }}"
+           data-medium-w="{{ $medium.Width }}"
+           data-medium-h="{{ $medium.Height }}"
+           data-lightbox-fit-w="{{ $lightboxFit.Width }}"
+           data-lightbox-fit-h="{{ $lightboxFit.Height }}"
            {{- with $meta.title }} data-title="{{ . }}"{{ end }}
            {{- with $meta.description }} data-description="{{ . }}"{{ end }}
            {{- with $date }} data-date="{{ . }}"{{ end }}
