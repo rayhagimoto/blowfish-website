@@ -152,6 +152,7 @@
   var lbOpenToken = 0;
   var lbLoadToken = 0;
   var lbTierToken = 0;
+  var lbOpeningUntil = 0;
   var lbSettleTimer = null;
   var lbFullIdleTimer = null;
   var lbLastNavAt = 0;
@@ -1212,6 +1213,7 @@
     if (!lb) lb = buildLightbox();
     lbLastNavAt = 0;
     lbSwipeCommitted = false;
+    lbOpeningUntil = thumbEl ? (Date.now() + LB_OPEN_FROM_THUMB_MS + 120) : 0;
     lockPageScrollForLightbox();
     lb.style.display = 'flex';
     requestAnimationFrame(function () {
@@ -1230,11 +1232,16 @@
         // Ignore stale async callbacks from older open attempts.
         if (openToken !== lbOpenToken || !lb || lb.style.display === 'none') return;
         currentIdx = requestedIdx;
+        // Re-assert centered track after fly-in completes.
+        if (lb._resetSwipeOffset) lb._resetSwipeOffset();
+        if (lb._syncCarousel) lb._syncCarousel();
+        lbOpeningUntil = 0;
       });
     } else {
       var directIdx = currentIdx;
       showLBImage(directIdx, {});
       prefetchAroundIndex(directIdx);
+      lbOpeningUntil = 0;
     }
   }
 
@@ -1250,6 +1257,8 @@
   }
 
   function navigate(dir) {
+    // Ignore accidental swipe/click navigation while opening animation settles.
+    if (lbOpeningUntil && Date.now() < lbOpeningUntil) return;
     currentIdx = wrapLbIndex(currentIdx + dir);
     var opts = {};
     if (lbSwipeCommitted) {
@@ -1273,6 +1282,12 @@
     if (lb._resetSwipeOffset) lb._resetSwipeOffset();
     if (lb._syncCarousel) lb._syncCarousel();
     if (lb._refreshNeighborSlots) lb._refreshNeighborSlots();
+    // Some input sequences can mutate transform after sync; force center once more next frame.
+    requestAnimationFrame(function () {
+      if (!lb || lb.style.display === 'none') return;
+      if (lb._resetSwipeOffset) lb._resetSwipeOffset();
+      if (lb._syncCarousel) lb._syncCarousel();
+    });
 
     lbLastNavAt = performance.now();
 
