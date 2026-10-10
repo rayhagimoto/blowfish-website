@@ -1,0 +1,47 @@
+{{- $photos := slice -}}
+{{- range sort (resources.Match "img/gallery/*") "Name" -}}
+  {{- if eq .ResourceType "image" -}}
+    {{- $image := . -}}
+    {{- $id := path.BaseName .Name -}}
+    {{- $info := dict -}}
+    {{- with resources.Get (printf "img/gallery/%s.yaml" $id) -}}
+      {{- $info = .Content | transform.Unmarshal -}}
+    {{- end -}}
+    {{- $title := strings.TrimSpace (default "" $info.title) -}}
+    {{- $description := strings.TrimSpace (default "" $info.description) -}}
+    {{- $metadata := slice -}}
+    {{- with $info.location -}}
+      {{- $metadata = $metadata | append (dict "label" "Location" "value" .) -}}
+    {{- end -}}
+    {{- $tags := dict -}}
+    {{- with $image.Exif -}}
+      {{- $tags = .Tags -}}
+      {{- if not .Date.IsZero -}}
+        {{- $metadata = $metadata | append (dict "label" "Taken" "value" (.Date.Format "2 January 2006")) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- range slice (dict "label" "Camera" "value" (default $tags.Model $info.camera)) (dict "label" "Lens" "value" (default $tags.LensModel $info.lens)) (dict "label" "ISO" "value" (default $tags.ISOSpeedRatings $tags.ISO)) -}}
+      {{- $field := . -}}
+      {{- with .value -}}{{- $metadata = $metadata | append (dict "label" $field.label "value" .) -}}{{- end -}}
+    {{- end -}}
+    {{- with $tags.ExposureTime -}}{{- $metadata = $metadata | append (dict "label" "Exposure" "value" (printf "%v s" .)) -}}{{- end -}}
+    {{- with $tags.FNumber -}}{{- $metadata = $metadata | append (dict "label" "Aperture" "value" (printf "f/%s" (partial "gallery-overhaul/number.html" .))) -}}{{- end -}}
+    {{- with $tags.FocalLength -}}{{- $metadata = $metadata | append (dict "label" "Focal length" "value" (printf "%s mm" (partial "gallery-overhaul/number.html" .))) -}}{{- end -}}
+    {{- $maxEdge := math.Min 3000 (math.Max $image.Width $image.Height) | int -}}
+    {{- $largest := $image.Fit (printf "%dx%d webp q85" $maxEdge $maxEdge) -}}
+    {{- $variants := slice -}}
+    {{- range slice 320 640 960 1440 2048 -}}
+      {{- if lt . $largest.Width -}}
+        {{- $resized := $image.Resize (printf "%dx webp q80" .) -}}
+        {{- $variants = $variants | append (dict "src" $resized.RelPermalink "width" $resized.Width) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $variants = $variants | append (dict "src" $largest.RelPermalink "width" $largest.Width) -}}
+    {{- $preview := $image.Resize "48x webp q25" -}}
+    {{- $thumb := $image.Resize (printf "%dx webp q75" (math.Min 640 $largest.Width | int)) -}}
+    {{- $alt := default (printf "Photograph %s" $id) $title -}}
+    {{- $caption := partial "gallery-overhaul/caption.html" (dict "title" $title "description" $description "metadata" $metadata) -}}
+    {{- $photos = $photos | append (dict "id" $id "title" $title "alt" $alt "location" (default "" $info.location) "albums" (default slice $info.albums) "caption" (strings.TrimSpace $caption) "src" $largest.RelPermalink "width" $largest.Width "height" $largest.Height "preview" (printf "data:image/webp;base64,%s" ($preview.Content | base64Encode)) "thumb" $thumb.RelPermalink "variants" $variants) -}}
+  {{- end -}}
+{{- end -}}
+{{- return $photos -}}

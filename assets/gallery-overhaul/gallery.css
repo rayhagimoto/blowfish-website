@@ -1,0 +1,96 @@
+:root {
+  color-scheme: light;
+  --paper: #f8f7f4;
+  --ink: #242722;
+  --muted: #74766d;
+  --line: #dedfd7;
+  --accent: #657354;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; }
+button, a { -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.skip-link { position: fixed; top: -80px; left: 20px; z-index: 10; padding: 12px 20px; background: var(--ink); color: var(--paper); }
+.skip-link:focus { top: 10px; }
+.site-header, main, .site-footer { max-width: 1600px; margin-inline: auto; padding-inline: 48px; }
+.site-header { height: 110px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.site-name { font-size: 18px; letter-spacing: -.04em; font-weight: 600; }
+.site-header nav { display: flex; gap: 30px; font-size: 13px; }
+.site-header nav a { color: var(--muted); padding-block: 10px; }
+.site-header nav a:hover, .site-header nav [aria-current] { color: var(--ink); }
+.site-header nav [aria-current] { border-bottom: 1px solid var(--ink); }
+.gallery-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 36px; padding: 60px 0 52px; }
+.eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .19em; font-size: 10px; font-weight: 650; margin: 0 0 22px; }
+h1 { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: clamp(54px, 6.5vw, 100px); font-weight: 400; letter-spacing: -.055em; line-height: 1.06; margin: 0; }
+h1 span { color: var(--accent); }
+.intro-copy { color: var(--muted); font-size: 14px; line-height: 1.9; margin: 0 0 7px; }
+.gallery-toolbar { border-top: 1px solid var(--line); padding: 24px 0 30px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.album-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.album-filters button { border: 1px solid transparent; background: transparent; color: var(--muted); font-size: 12px; padding: 9px 16px; border-radius: 24px; min-height: 38px; }
+.album-filters button:hover { color: var(--ink); border-color: var(--line); }
+.album-filters [aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.photo-count { font-size: 11px; letter-spacing: .02em; color: var(--muted); white-space: nowrap; margin: 0; }
+.photo-grid { position: relative; }
+.gallery-card { width: calc((100% - 32px) / 3); margin: 0; }
+.gallery-link { display: block; position: relative; overflow: hidden; border-radius: 3px; background-size: cover; background-position: center; }
+.gallery-card img { display: block; width: 100%; height: auto; opacity: 0; transition: opacity .45s ease; }
+.gallery-card.is-loaded img { opacity: 1; }
+.card-label { position: absolute; inset: auto 0 0; display: flex; flex-direction: column; gap: 5px; padding: 52px 20px 20px; color: white; background: linear-gradient(transparent, #0009); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.card-label strong { font-size: 14px; font-weight: 500; }
+.card-label > span { font-size: 11px; color: #fffc; }
+.gallery-link:hover .card-label, .gallery-link:focus-visible .card-label { opacity: 1; }
+.image-error .gallery-link::after { content: "Open photograph ↗"; position: absolute; inset: auto 0 0; padding: 16px; background: #0009; color: white; font-size: 12px; }
+.gallery-end { text-align: center; padding: 50px 0 70px; }
+.gallery-end p, .fallback-notice { font-size: 12px; color: var(--muted); }
+#load-more { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 24px; padding: 12px 24px; font-size: 12px; margin-top: 12px; }
+#load-more span { margin-left: 18px; }
+.site-footer { display: flex; justify-content: space-between; padding-block: 28px 40px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); }
+.photo-grid:not([style]), .fallback-grid { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+body:has(noscript) .fallback-grid img { opacity: 1; }
+.photography-lightbox { --pswp-bg: #101211; --pswp-icon-color: #f5f5ef; --pswp-icon-color-secondary: #101211; --pswp-icon-stroke-color: #101211; }
+.photography-lightbox .pswp__dynamic-caption { color: #e9eae3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.photography-lightbox .pswp__dynamic-caption--aside { padding: 28px 20px 20px 28px; max-width: 280px; max-height: calc(100vh - 100px); overflow-y: auto; }
+.photography-lightbox .pswp__dynamic-caption--below { padding-top: 20px; }
+.photography-lightbox .pswp__dynamic-caption--mobile { padding: 18px 24px calc(18px + env(safe-area-inset-bottom)); background: #101211; max-height: 42vh; overflow-y: auto; overscroll-behavior: contain; }
+.photo-title { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-weight: 400; font-size: 26px; line-height: 1.2; margin: 0 0 14px; }
+.photo-description { font-size: 13px; color: #b7bbb0; line-height: 1.7; margin: 0 0 20px; }
+.photo-metadata { margin: 0; display: flex; flex-direction: column; gap: 13px; }
+.photo-metadata div { display: flex; flex-direction: column; gap: 4px; }
+.photo-metadata dt { color: #858e7c; font-size: 9px; text-transform: uppercase; letter-spacing: .12em; }
+.photo-metadata dd { margin: 0; color: #c7ccc1; font-size: 12px; overflow-wrap: anywhere; }
+@media (min-width: 1501px) { .gallery-card { width: calc((100% - 48px) / 4); } }
+@media (max-width: 960px) {
+  .site-header, main, .site-footer { padding-inline: 30px; }
+  .gallery-card { width: calc((100% - 16px) / 2); }
+  .gallery-intro { padding-top: 34px; }
+  .intro-copy { font-size: 12px; }
+}
+@media (max-width: 600px) {
+  .site-header, main, .site-footer { padding-inline: 20px; }
+  .site-header { height: 84px; gap: 16px; }
+  .site-name { font-size: 15px; white-space: nowrap; }
+  .site-header nav { gap: 16px; font-size: 11px; }
+  .gallery-intro { display: block; padding: 32px 0; }
+  .eyebrow { margin-bottom: 16px; }
+  .intro-copy { margin: 20px 0 0; }
+  .intro-copy br { display: none; }
+  .gallery-toolbar { align-items: flex-start; flex-direction: column; gap: 16px; padding: 20px 0; }
+  .album-filters { gap: 4px; }
+  .album-filters button { padding: 9px 13px; }
+  .gallery-card { width: 100%; }
+  .photography-lightbox .photo-metadata { flex-direction: row; flex-wrap: wrap; gap: 12px 24px; }
+  .photography-lightbox .photo-title { font-size: 22px; margin-bottom: 12px; }
+  .gallery-end { padding-bottom: 40px; }
+}
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; --paper: #171a17; --ink: #e5e7dd; --muted: #999e90; --line: #343a31; --accent: #a8b694; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+@media (scripting: none) { .gallery-card img { opacity: 1; } }

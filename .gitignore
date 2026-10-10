@@ -19,15 +19,17 @@ Thumbs.db
 # Local Netlify folder
 .netlify
 node_modules
-package-lock.json
 
 # cursor
 .vscode
 .cursorrules
 .cursor
 
-# web stuff that idk about 
-package.json
-
 # don't need compiled stuff either
 assets/css/compiled
+
+# Experimental gallery bundles and browser test output
+/static/gallery-overhaul/
+/.playwright-cli/
+/test-results/
+/playwright-report/

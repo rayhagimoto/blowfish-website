@@ -1,0 +1,54 @@
+{{ $photos := partial "gallery-overhaul/images.html" . }}
+{{ $albums := slice }}
+{{ range $photos }}{{ range .albums }}{{ $albums = $albums | append . }}{{ end }}{{ end }}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode | default "en" }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Photography by {{ site.Title }}. Browse photographs from places near and far.">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ .Title }} · {{ site.Title }}</title>
+  <link rel="canonical" href="{{ .Permalink }}">
+  <link rel="icon" href="{{ "favicon-32x32.png" | relURL }}">
+  <link rel="stylesheet" href="{{ "gallery-overhaul/gallery.css" | relURL }}">
+</head>
+<body>
+  <a class="skip-link" href="#photographs">Skip to photographs</a>
+  <header class="site-header">
+    <a class="site-name" href="{{ "/" | relURL }}">{{ site.Title }}</a>
+    <nav aria-label="Main navigation">
+      {{ range site.Menus.main }}<a href="{{ .URL }}" {{ if eq .URL "/gallery/" }}aria-current="page"{{ end }}>{{ .Name }}</a>{{ end }}
+    </nav>
+  </header>
+  <main>
+    <section class="gallery-intro" aria-labelledby="gallery-title">
+      <div><p class="eyebrow">A visual journal</p><h1 id="gallery-title">Photography<span aria-hidden="true">.</span></h1></div>
+      <p class="intro-copy">Places, people, and passing moments.<br> A little of how I see the world.</p>
+    </section>
+    <section id="photographs" aria-label="Photographs" tabindex="-1">
+      <div class="gallery-toolbar">
+        <div class="album-filters" role="group" aria-label="Filter photographs by album" hidden>
+          <button type="button" data-album="" aria-pressed="true">All photographs</button>
+          {{ range sort (uniq $albums) }}<button type="button" data-album="{{ . }}" aria-pressed="false">{{ . }}</button>{{ end }}
+        </div>
+        <p class="photo-count"><span id="photo-count">{{ len $photos }}</span> photographs</p>
+      </div>
+      <div id="photo-grid" class="photo-grid">
+        {{ range $index, $photo := first 12 $photos }}{{ partial "gallery-overhaul/card.html" (dict "photo" $photo "eager" (lt $index 3)) }}{{ end }}
+      </div>
+      <div class="gallery-end">
+        <p id="gallery-status" role="status" aria-live="polite">{{ len $photos }} photographs in the collection</p>
+        <button id="load-more" type="button" hidden>More photographs <span aria-hidden="true">↓</span></button>
+      </div>
+      <noscript>
+        <p class="fallback-notice">Open a photograph to view it in full size.</p>
+        <div class="photo-grid fallback-grid">{{ range after 12 $photos }}{{ partial "gallery-overhaul/card.html" (dict "photo" . "eager" false) }}{{ end }}</div>
+      </noscript>
+    </section>
+  </main>
+  <footer class="site-footer"><span>© {{ now.Year }} {{ site.Title }}</span><a href="#gallery-title">Back to top ↑</a></footer>
+  <script id="gallery-data" type="application/json">{{ $photos | jsonify | safeJS }}</script>
+  <script type="module" src="{{ "gallery-overhaul/gallery.js" | relURL }}"></script>
+</body>
+</html>

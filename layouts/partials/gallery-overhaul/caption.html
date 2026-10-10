@@ -1,0 +1,7 @@
+{{ with .title }}<h2 class="photo-title">{{ . }}</h2>{{ end }}
+{{ with .description }}<p class="photo-description">{{ . }}</p>{{ end }}
+{{ with .metadata }}
+<dl class="photo-metadata">
+  {{ range . }}<div><dt>{{ .label }}</dt><dd>{{ .value }}</dd></div>{{ end }}
+</dl>
+{{ end }}

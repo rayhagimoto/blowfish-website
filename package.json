@@ -1,0 +1,22 @@
+{
+  "name": "blowfish-photography",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:gallery": "playwright test",
+    "build:gallery": "esbuild assets/gallery-overhaul/gallery.js --bundle --splitting --format=esm --minify --target=es2020 --outdir=static/gallery-overhaul --chunk-names=[name]-[hash]",
+    "watch:gallery": "npm run build:gallery -- --watch",
+    "dev": "npm run build:gallery && hugo server --port 9099 --bind 127.0.0.1 --disableFastRender",
+    "build": "npm run build:gallery && hugo --gc --minify"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@egjs/infinitegrid": "4.13.0",
+    "photoswipe": "5.4.4",
+    "photoswipe-dynamic-caption-plugin": "1.2.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "esbuild": "0.28.2"
+  }
+}

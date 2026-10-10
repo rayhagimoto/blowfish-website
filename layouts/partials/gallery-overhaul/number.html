@@ -1,0 +1,6 @@
+{{- $parts := split (printf "%v" .) "/" -}}
+{{- $number := float (index $parts 0) -}}
+{{- if eq (len $parts) 2 -}}
+  {{- $number = math.Div $number (float (index $parts 1)) -}}
+{{- end -}}
+{{- return (printf "%g" $number) -}}
