@@ -45,6 +45,7 @@ assets/css/compiled
 /.cms-hugo/
 /.cms-local/
 /static/admin/app.js
+/static/admin/appearance.js
 /static/admin/app.css
 /static/admin/vendor/
 /static/cms-math/

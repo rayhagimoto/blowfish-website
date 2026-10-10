@@ -1,12 +1,14 @@
 import { build } from 'esbuild';
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import TOML from '@iarna/toml';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const output = path.join(root, 'static/admin');
 const source = path.join(root, 'node_modules/vditor/dist');
 const vendor = path.join(output, 'vendor/vditor/dist');
+const params = TOML.parse(await readFile(path.join(root, 'config/_default/params.toml'), 'utf8'));
 await mkdir(output, { recursive: true });
 await rm(path.join(output, 'vendor'), { recursive: true, force: true });
 for (const entry of ['index.css', 'css', 'images', 'js/lute', 'js/katex', 'js/highlight.js', 'js/icons/ant.js', 'js/i18n/en_US.js']) {
@@ -27,6 +29,19 @@ await mkdir(publicMath, { recursive: true });
 for (const entry of ['katex.min.css', 'fonts']) {
   await cp(path.join(katex, entry), path.join(publicMath, entry), { recursive: true });
 }
+await build({
+  absWorkingDir: root,
+  entryPoints: ['cms/admin/appearance.js'],
+  bundle: true,
+  format: 'iife',
+  target: 'es2022',
+  minify: true,
+  outfile: path.join(output, 'appearance.js'),
+  define: {
+    __SITE_DEFAULT_APPEARANCE__: JSON.stringify(params.defaultAppearance || 'light'),
+    __SITE_AUTO_APPEARANCE__: JSON.stringify(params.autoSwitchAppearance ?? true),
+  },
+});
 await build({
   absWorkingDir: root,
   entryPoints: ['cms/admin/app.js'],

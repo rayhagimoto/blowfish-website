@@ -41,6 +41,48 @@ async function mock(page, data) {
   await page.route('**/media/*.webp', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#678c76"/></svg>' }));
 }
 
+test('sign-in shares the public default theme and follows system changes without storing a preference', async ({ page }, testInfo) => {
+  const data = fixture(); data.authenticated = false; await mock(page, data);
+  await page.emulateMedia({ colorScheme: 'light' }); await page.goto('/admin/');
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(15, 15, 15)');
+  await expect(page.getByRole('button', { name: 'Sign in securely' })).toHaveCSS('background-color', 'rgb(216, 131, 41)');
+  await page.screenshot({ path: testInfo.outputPath('studio-signin-dark.png'), fullPage: true, animations: 'disabled' });
+  await page.emulateMedia({ colorScheme: 'dark' }); await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
+});
+
+test('public appearance preference persists across the studio, editor, preview, and reload', async ({ page }, testInfo) => {
+  const data = fixture(); await mock(page, data);
+  await page.addInitScript(() => { if (!localStorage.getItem('appearance')) localStorage.setItem('appearance', 'light'); });
+  await page.emulateMedia({ colorScheme: 'dark' }); await page.goto('/admin/');
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await page.getByRole('button', { name: /A field note/ }).click();
+  await expect(page.locator('#markdown-editor .vditor-ir')).toBeVisible();
+  await expect(page.locator('#markdown-editor .vditor-toolbar')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await page.screenshot({ path: testInfo.outputPath('studio-editor-light.png'), fullPage: true, animations: 'disabled' });
+  await page.getByRole('button', { name: 'Published preview', exact: true }).click();
+  const preview = page.frameLocator('#safe-preview-frame');
+  await expect(preview.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await page.getByRole('button', { name: 'Switch color theme' }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(page.locator('#markdown-editor')).toHaveClass(/vditor--dark/);
+  await expect(page.locator('#markdown-editor .vditor-toolbar')).toHaveCSS('background-color', 'rgb(25, 25, 25)');
+  await expect(page.getByRole('button', { name: 'Save draft', exact: true })).toHaveCSS('background-color', 'rgb(25, 25, 25)');
+  await expect(preview.locator('body')).toHaveCSS('background-color', 'rgb(15, 15, 15)');
+  await page.screenshot({ path: testInfo.outputPath('studio-editor-dark.png'), fullPage: true, animations: 'disabled' });
+  expect(await page.evaluate(() => localStorage.getItem('appearance'))).toBe('dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Switch color theme' })).toHaveText('Light theme');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(15, 15, 15)');
+});
+
 test('sign-in requires a TOTP challenge and passes the trusted browser preference', async ({ page }) => {
   const data = fixture(); data.authenticated = false; await mock(page, data); await page.goto('/admin/');
   await page.getByLabel('Password', { exact: true }).fill('unique-password-for-test'); await page.getByRole('button', { name: 'Sign in securely' }).click();

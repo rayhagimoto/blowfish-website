@@ -9,7 +9,8 @@ const OWNER = 'rayhagimoto@gmail.com';
 const app = document.querySelector('#app');
 const modal = document.querySelector('#modal');
 const state = { user: null, tab: 'posts', posts: [], media: [], gallery: null, editor: null, post: null,
-  dirty: false, savePromise: null, saveTimer: null, conflict: false, editVersion: 0, theme: 'light', font: 'mono', mode: 'ir', uploads: 0, editorReady: false, editorMarkdown: '', navigating: false };
+  dirty: false, savePromise: null, saveTimer: null, conflict: false, editVersion: 0, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light', font: 'mono', mode: 'ir', uploads: 0, editorReady: false, editorMarkdown: '', navigating: false };
+window.addEventListener('appearancechange', () => setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light'));
 const setupToken = new URLSearchParams(location.hash.slice(1)).get('setup') || '';
 if (setupToken) history.replaceState(null, '', location.pathname + location.search);
 // Vditor does not forward these limits to KaTeX. Supply its global renderer with
@@ -167,12 +168,18 @@ function shell() {
     <small>A space to write and curate.<br>Video uploads are planned for a future release.</small></nav>
     <main id="content" class="content" tabindex="-1"></main></div>`;
   bindAction('#theme-toggle', () => {
-    state.theme = state.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = state.theme;
-    document.querySelector('#theme-toggle').textContent = state.theme === 'dark' ? 'Light theme' : 'Dark theme';
-    state.editor?.setTheme(state.theme === 'dark' ? 'dark' : 'classic', state.theme === 'dark' ? 'dark' : 'light');
+    setTheme(state.theme === 'dark' ? 'light' : 'dark');
+    localStorage.setItem('appearance', state.theme);
   });
   bindAction('#signout', signOut);
   document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.tab).catch(error => notice(error.message, true))));
+}
+function setTheme(theme) {
+  state.theme = theme; document.documentElement.classList.toggle('dark', theme === 'dark');
+  const toggle = document.querySelector('#theme-toggle');
+  if (toggle) toggle.textContent = theme === 'dark' ? 'Light theme' : 'Dark theme';
+  state.editor?.setTheme(theme === 'dark' ? 'dark' : 'classic', theme === 'dark' ? 'dark' : 'light');
+  document.querySelector('#safe-preview-frame')?.contentDocument?.documentElement.classList.toggle('dark', theme === 'dark');
 }
 function openDialog(title, content) {
   modal.innerHTML = `<h2 id="modal-title">${title}</h2><button class="quiet modal-close" type="button" aria-label="Close dialog">×</button>${content}`;
@@ -397,7 +404,7 @@ async function safePreview() {
   const { html } = await api('/preview', { method: 'POST', body: { markdown: currentPost().markdown } });
   // Same-origin access lets private image requests carry admin cookies. Scripts
   // remain blocked by both the sandbox and this preview-specific policy.
-  frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="no-referrer"><link rel="stylesheet" href="/admin/vendor/vditor/dist/js/katex/katex.min.css"><style>body{font:17px/1.8 system-ui,sans-serif;color:#23352d;padding:2rem;max-width:800px;margin:auto;overflow-wrap:anywhere}img{max-width:100%;height:auto}pre{overflow:auto;background:#f2f4f0;padding:1rem}a{color:#126350}blockquote{border-left:3px solid #a9c9b4;padding-left:1rem}table{border-collapse:collapse}td,th{border:1px solid #ccd8d0;padding:.5rem}</style></head><body>${html}</body></html>`;
+  frame.srcdoc = `<!doctype html><html lang="en" class="${state.theme === 'dark' ? 'dark' : ''}"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="no-referrer"><link rel="stylesheet" href="/admin/vendor/vditor/dist/js/katex/katex.min.css"><link rel="stylesheet" href="/admin/app.css"><style>body{font-size:18px;line-height:1.5;padding:2rem;max-width:800px;margin:auto;overflow-wrap:anywhere}img{max-width:100%;height:auto}pre{overflow:auto;background:var(--surface);padding:1rem}blockquote{border-left:3px solid var(--accent);padding-left:1rem}table{border-collapse:collapse}td,th{border:1px solid var(--line);padding:.5rem}</style></head><body>${html}</body></html>`;
   frame.hidden = false; document.querySelector('#safe-preview').textContent = 'Hide published preview';
 }
 function markdownLabel(value) { return String(value).replace(/[\[\]\\\r\n]/g, '').replace(/\.[^.]+$/, ''); }
