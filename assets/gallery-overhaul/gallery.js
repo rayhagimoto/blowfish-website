@@ -9,7 +9,6 @@ const photos = JSON.parse(document.getElementById('gallery-data').textContent);
 const container = document.getElementById('photo-grid');
 const filters = document.querySelector('.album-filters');
 const count = document.getElementById('photo-count');
-const status = document.getElementById('gallery-status');
 const more = document.getElementById('load-more');
 const connection = navigator.connection;
 const constrained = connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '');
@@ -86,9 +85,6 @@ function createCard(photo) {
 function updateProgress() {
   count.textContent = selected.length;
   more.hidden = shown >= selected.length;
-  status.textContent = shown < selected.length
-    ? `${shown} of ${selected.length} photographs · keep exploring`
-    : `${selected.length} photographs · you're all caught up`;
 }
 
 function appendBatch() {

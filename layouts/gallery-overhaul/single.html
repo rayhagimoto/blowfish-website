@@ -20,7 +20,6 @@
         {{ range $index, $photo := first 12 $photos }}{{ partial "gallery-overhaul/card.html" (dict "photo" $photo "eager" (lt $index 3)) }}{{ end }}
       </div>
       <div class="gallery-end">
-        <p id="gallery-status" role="status" aria-live="polite">{{ len $photos }} photographs in the collection</p>
         <button id="load-more" type="button" hidden>More photographs <span aria-hidden="true">↓</span></button>
       </div>
       <noscript>
