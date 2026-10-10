@@ -15,7 +15,7 @@ const connection = navigator.connection;
 const constrained = connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const batchSize = 12;
-const sizes = '(max-width: 600px) calc(100vw - 40px), (max-width: 960px) calc((100vw - 76px) / 2), (max-width: 1500px) calc((100vw - 128px) / 3), 380px';
+const sizes = container.dataset.imageSizes;
 let selected = photos;
 let shown = container.children.length;
 let grid;

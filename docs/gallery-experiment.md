@@ -1,6 +1,6 @@
 # Photography experiment
 
-Branch: `codex/gallery-overhaul`. The previous gallery source was not read or modified. The gallery page selects a new standalone Hugo layout through `type: gallery-overhaul` in its frontmatter. All 56 original gallery photographs and their sidecars are used in filename order.
+Branch: `codex/gallery-overhaul`. The previous gallery implementation was not read or modified. The gallery page selects a new Hugo layout through `type: gallery-overhaul` in its frontmatter, using the site's shared base layout, header, footer, typography, colors, and appearance controls. All 56 original gallery photographs and their sidecars are used in filename order.
 
 ## Run
 
@@ -29,7 +29,7 @@ Browser checks use installed Google Chrome. They reuse an existing server on por
 - Hugo produces embedded 48-pixel previews and WebP candidates at 320, 640, 960, 1440, and 2048 pixels, plus a largest version fitted within 3000 × 3000. Candidates are capped at the source image's size. Gallery images use smaller candidates; PhotoSwipe updates `sizes` when zooming so the browser can request a larger version.
 - Native lazy loading, reserved image dimensions, asynchronous decoding, high priority for the first three photographs, thumbnail neighbor prefetching, and reduced prefetching on data-saving/2G connections keep unnecessary work down. The lightbox still loads its immediately adjacent slides on constrained connections, as required by PhotoSwipe.
 - No gallery request depends on an external CDN. Library versions and the dependency lockfile are tracked. Compiled bundles and transformed images are generated during the build.
-- System dark mode, reduced motion, accessible album buttons, a manual load-more control, restored focus after closing, and a complete no-JavaScript gallery are included.
+- The site's dark-mode preference and appearance switcher, reduced motion, accessible album buttons, a manual load-more control, restored focus after closing, and a complete no-JavaScript gallery are included. Gallery styles are scoped to the gallery and lightbox and use the site's color variables.
 
 ## Titles and metadata
 
@@ -48,7 +48,8 @@ Every field and the sidecar itself is optional. A title can be shown without met
 
 ## Layout and build files
 
-- `layouts/gallery-overhaul/single.html`: standalone page and initial batch.
+- `layouts/gallery-overhaul/single.html`: gallery content within the shared site layout and initial batch.
+- `layouts/partials/extend-head-uncached.html`: gallery stylesheet loaded only for this page.
 - `layouts/partials/gallery-overhaul/`: image variants, optional metadata, and cards.
 - `assets/gallery-overhaul/`: library integration and page styles.
 - `tests/gallery/`: browser behavior and network loading checks.

@@ -14,6 +14,28 @@ async function collection(page) {
   return page.locator('#gallery-data').evaluate(el => JSON.parse(el.textContent));
 }
 
+test('shares the site theme and preserves its appearance switcher', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('appearance', 'light'));
+  const styles = () => page.evaluate(() => {
+    const body = getComputedStyle(document.body);
+    const title = getComputedStyle(document.querySelector('h1'));
+    return { background: body.backgroundColor, color: body.color, font: body.fontFamily, titleFont: title.fontFamily, titleSize: title.fontSize, titleWeight: title.fontWeight };
+  });
+  await page.goto('/posts/');
+  const siteStyles = await styles();
+  const siteCss = await page.locator('link[href*="main.bundle"]').getAttribute('href');
+  await ready(page);
+  expect(await styles()).toEqual(siteStyles);
+  await expect(page.locator('link[href*="main.bundle"]')).toHaveAttribute('href', siteCss);
+  await expect(page.getByRole('button', { name: 'Search', exact: true }).first()).toBeVisible();
+  await expect(page.locator('#site-footer')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Dark mode switcher', exact: true }).first().click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  expect((await styles()).background).not.toBe(siteStyles.background);
+  const accent = await page.evaluate(() => `rgb(${getComputedStyle(document.documentElement).getPropertyValue('--color-primary-400').trim()})`);
+  await expect(page.locator('.album-filters [aria-pressed="true"]')).toHaveCSS('background-color', accent);
+});
+
 test('starts with a small batch and loads the lightbox library only when opened', async ({ page }) => {
   const requests = [];
   const errors = [];
@@ -88,7 +110,8 @@ test('mobile layout stays within the viewport and supports touch navigation', as
   await ready(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const first = await page.locator('.gallery-card').first().boundingBox();
-  expect(first.width).toBeCloseTo(350, 0);
+  const gridBounds = await page.locator('#photo-grid').boundingBox();
+  expect(first.width).toBeCloseTo(gridBounds.width, 0);
   await page.locator('.gallery-link').first().click();
   await expect(page.locator('.pswp')).toBeVisible();
   await expect(page.locator('.pswp')).toBeFocused();
@@ -152,6 +175,9 @@ test('Hugo builds images with absent sidecars, titles only, or metadata only', a
     mkdirSync(join(fixture, 'content/gallery'), { recursive: true });
     cpSync('layouts/gallery-overhaul', join(fixture, 'layouts/gallery-overhaul'), { recursive: true });
     cpSync('layouts/partials/gallery-overhaul', join(fixture, 'layouts/partials/gallery-overhaul'), { recursive: true });
+    writeFileSync(join(fixture, 'layouts/partials/scroll-to-top.html'), '<div id="scroll-to-top"></div>');
+    mkdirSync(join(fixture, 'layouts/_default'), { recursive: true });
+    writeFileSync(join(fixture, 'layouts/_default/baseof.html'), '<!doctype html><html><body>{{ block "main" . }}{{ end }}</body></html>');
     writeFileSync(join(fixture, 'hugo.toml'), 'baseURL = "https://example.test/"\ntitle = "Test gallery"\n');
     writeFileSync(join(fixture, 'content/gallery/index.md'), '---\ntitle: Photography\ntype: gallery-overhaul\n---\n');
     for (const id of ['00', '01', '02']) writeFileSync(join(fixture, `assets/img/gallery/${id}.webp`), preview);
