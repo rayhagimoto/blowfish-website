@@ -30,6 +30,11 @@
     {{- with $tags.ExposureTime -}}{{- $metadata = $metadata | append (dict "label" "Exposure" "value" (printf "%v s" .)) -}}{{- end -}}
     {{- with $tags.FNumber -}}{{- $metadata = $metadata | append (dict "label" "Aperture" "value" (printf "f/%s" (partial "gallery-overhaul/number.html" .))) -}}{{- end -}}
     {{- with $tags.FocalLength -}}{{- $metadata = $metadata | append (dict "label" "Focal length" "value" (printf "%s mm" (partial "gallery-overhaul/number.html" .))) -}}{{- end -}}
+    {{- $original := $image -}}
+    {{- if ne $image.MediaType.SubType "jpeg" -}}
+      {{- $original = $image.Resize (printf "%dx jpg q95" $image.Width) -}}
+    {{- end -}}
+    {{- $original = resources.Copy (printf "gallery/originals/%s.jpg" $id) $original -}}
     {{- $maxEdge := math.Min 3000 (math.Max $image.Width $image.Height) | int -}}
     {{- $largest := $image.Fit (printf "%dx%d webp q85" $maxEdge $maxEdge) -}}
     {{- $variants := slice -}}
@@ -44,7 +49,7 @@
     {{- $thumb := $image.Resize (printf "%dx webp q75" (math.Min 640 $largest.Width | int)) -}}
     {{- $alt := default (printf "Photograph %s" $id) $title -}}
     {{- $caption := partial "gallery-overhaul/caption.html" (dict "title" $title "description" $description "metadata" $metadata) -}}
-    {{- $photos = $photos | append (dict "id" $id "title" $title "alt" $alt "location" (default "" $info.location) "albums" (default slice $info.albums) "caption" (strings.TrimSpace $caption) "src" $largest.RelPermalink "width" $largest.Width "height" $largest.Height "preview" (printf "data:image/webp;base64,%s" ($preview.Content | base64Encode)) "thumb" $thumb.RelPermalink "variants" $variants) -}}
+    {{- $photos = $photos | append (dict "id" $id "title" $title "alt" $alt "location" (default "" $info.location) "albums" (default slice $info.albums) "caption" (strings.TrimSpace $caption) "original" $original.RelPermalink "src" $largest.RelPermalink "width" $largest.Width "height" $largest.Height "preview" (printf "data:image/webp;base64,%s" ($preview.Content | base64Encode)) "thumb" $thumb.RelPermalink "variants" $variants) -}}
   {{- end -}}
 {{- end -}}
 {{- return $photos -}}

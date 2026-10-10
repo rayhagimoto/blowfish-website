@@ -1,7 +1,7 @@
 {{ $photo := .photo }}
 {{ $srcset := slice }}{{ range $photo.variants }}{{ if le .width 960 }}{{ $srcset = $srcset | append (printf "%s %dw" .src .width) }}{{ end }}{{ end }}
 <figure class="gallery-card" data-photo-id="{{ $photo.id }}">
-  <a href="{{ $photo.src }}" class="gallery-link" aria-label="Open {{ $photo.alt }}" style="aspect-ratio: {{ $photo.width }} / {{ $photo.height }}; background-image: url('{{ $photo.preview | safeURL }}')">
+  <a href="{{ $photo.original }}" class="gallery-link" aria-label="Open {{ $photo.alt }}" style="aspect-ratio: {{ $photo.width }} / {{ $photo.height }}; background-image: url('{{ $photo.preview | safeURL }}')">
     <img src="{{ $photo.thumb }}" srcset="{{ delimit $srcset ", " }}" sizes="{{ partial "gallery-overhaul/sizes.html" . }}" width="{{ $photo.width }}" height="{{ $photo.height }}" alt="{{ $photo.alt }}" loading="{{ if .eager }}eager{{ else }}lazy{{ end }}" decoding="async" {{ if .eager }}fetchpriority="high"{{ end }}>
     {{ if or $photo.title $photo.location }}<span class="card-label" aria-hidden="true">{{ with $photo.title }}<strong>{{ . }}</strong>{{ end }}{{ with $photo.location }}<span>{{ . }}</span>{{ end }}</span>{{ end }}
   </a>

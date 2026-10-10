@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import sharp from 'sharp';
 
 async function ready(page) {
   await page.goto('/gallery/');
@@ -26,6 +27,7 @@ test('shares the site theme and preserves its appearance switcher', async ({ pag
   const siteCss = await page.locator('link[href*="main.bundle"]').getAttribute('href');
   await ready(page);
   expect(await styles()).toEqual(siteStyles);
+  await expect(page.locator('.intro-copy')).toHaveCount(0);
   await expect(page.locator('link[href*="main.bundle"]')).toHaveAttribute('href', siteCss);
   await expect(page.locator('link[href*="/gallery-overhaul/gallery."]')).toHaveAttribute('href', /gallery\.[a-f0-9]+\.css$/);
   await expect(page.locator('script[src*="/gallery-overhaul/gallery."]')).toHaveAttribute('src', /gallery\.[a-f0-9]+\.js$/);
@@ -82,10 +84,66 @@ test('starts with a small batch and loads the lightbox library only when opened'
   expect(requests.some(url => /photoswipe\.esm-/.test(url))).toBe(false);
   const large = new Set(photos.flatMap(photo => photo.variants.filter(v => v.width > 960).map(v => v.src)));
   expect(requests.some(url => large.has(new URL(url).pathname))).toBe(false);
+  expect(requests.some(url => photos.some(photo => new URL(url).pathname === photo.original))).toBe(false);
   await page.locator('.gallery-link').first().click();
   await expect(page.locator('.pswp')).toBeVisible();
   expect(requests.some(url => /photoswipe\.esm-/.test(url))).toBe(true);
   expect(errors).toEqual([]);
+});
+
+test('right-click downloads the original JPG from initial cards, filtered cards, and lightbox slides', async ({ page }) => {
+  await ready(page);
+  const photos = await collection(page);
+  const menu = page.getByRole('link', { name: 'Download full-resolution JPG', exact: true });
+  const downloadOriginal = async (image, photo) => {
+    await image.click({ button: 'right' });
+    await expect(menu).toBeVisible();
+    await expect(menu).toBeFocused();
+    await expect(menu).toHaveAttribute('href', photo.original);
+    const pending = page.waitForEvent('download');
+    await menu.click();
+    const download = await pending;
+    expect(download.suggestedFilename()).toBe(`${photo.id}.jpg`);
+    expect(readFileSync(await download.path())).toEqual(readFileSync(`assets/img/gallery/${photo.id}.jpg`));
+    await expect(menu).toBeHidden();
+  };
+
+  await downloadOriginal(page.locator('.gallery-card img').first(), photos[0]);
+  await page.getByRole('button', { name: 'Japan', exact: true }).click();
+  const japan = photos.filter(photo => photo.albums.includes('Japan'));
+  await downloadOriginal(page.locator('.gallery-card img').nth(1), japan[1]);
+  await page.getByRole('button', { name: 'All photographs', exact: true }).click();
+  await page.locator('.gallery-link').first().click();
+  await expect(page.locator('.pswp')).toBeFocused();
+  await downloadOriginal(page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)'), photos[0]);
+  for (let index = 0; index < 14; index++) await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.pswp__counter')).toHaveText('15 / 56');
+  await downloadOriginal(page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)'), photos[14]);
+});
+
+test('right-click download menu fits the viewport and dismisses without closing the lightbox', async ({ page }) => {
+  await ready(page);
+  const menu = page.getByRole('link', { name: 'Download full-resolution JPG', exact: true });
+  await page.locator('.gallery-card img').first().click({ button: 'right' });
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(page.locator('.gallery-link').first()).toBeFocused();
+  await page.locator('.gallery-link').first().click();
+  await expect(page.locator('.pswp')).toBeFocused();
+  await page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)').dispatchEvent('contextmenu', { clientX: 1439, clientY: 999 });
+  const bounds = await menu.boundingBox();
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(1440 - 8);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(1000 - 8);
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(page.locator('.pswp')).toBeVisible();
+  await expect(page.locator('.pswp')).toBeFocused();
+  await page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)').click({ button: 'right' });
+  await page.keyboard.press('ArrowRight');
+  await expect(menu).toBeHidden();
+  await expect(page.locator('.pswp__counter')).toHaveText('2 / 56');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.pswp')).toHaveCount(0);
 });
 
 test('navigates the entire collection, preloads both directions, zooms, and restores focus', async ({ page }) => {
@@ -140,12 +198,17 @@ test('scroll appends every image once and album filtering resets the grid and li
 });
 
 test('mobile layout stays within the viewport and supports touch navigation', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await ready(page);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  const first = await page.locator('.gallery-card').first().boundingBox();
-  const gridBounds = await page.locator('#photo-grid').boundingBox();
-  expect(first.width).toBeCloseTo(gridBounds.width, 0);
+  for (const width of [320, 600, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await ready(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const first = await page.locator('.gallery-card').first().boundingBox();
+    const second = await page.locator('.gallery-card').nth(1).boundingBox();
+    const gridBounds = await page.locator('#photo-grid').boundingBox();
+    expect(first.width * 2 + 16).toBeCloseTo(gridBounds.width, 0);
+    expect(second.x).toBeCloseTo(first.x + first.width + 16, 0);
+    expect(second.y).toBeCloseTo(first.y, 0);
+  }
   await page.locator('.gallery-link').first().click();
   await expect(page.locator('.pswp')).toBeVisible();
   await expect(page.locator('.pswp')).toBeFocused();
@@ -189,11 +252,15 @@ test('missing titles, missing metadata, and entirely empty captions display clea
 });
 
 test('all images and their captions remain available without JavaScript', async ({ browser }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:9099/gallery/');
   await expect(page.locator('.gallery-card')).toHaveCount(56);
-  await expect(page.locator('.gallery-link').first()).toHaveAttribute('href', /\.webp$/);
+  await expect(page.locator('.gallery-link').first()).toHaveAttribute('href', /\/gallery\/originals\/.*\.jpg$/);
+  const first = await page.locator('.gallery-card').first().boundingBox();
+  const second = await page.locator('.gallery-card').nth(1).boundingBox();
+  expect(second.x).toBeCloseTo(first.x + first.width + 16, 0);
+  expect(second.y).toBeCloseTo(first.y, 0);
   await expect(page.locator('figcaption').first()).toContainText('Chicago');
   await expect(page.locator('.album-filters')).toBeHidden();
   await context.close();
@@ -211,6 +278,7 @@ test('Hugo builds images with absent sidecars, titles only, or metadata only', a
     writeFileSync(join(fixture, 'assets/gallery-overhaul-build/gallery.js'), '');
     cpSync('layouts/gallery-overhaul', join(fixture, 'layouts/gallery-overhaul'), { recursive: true });
     cpSync('layouts/partials/gallery-overhaul', join(fixture, 'layouts/partials/gallery-overhaul'), { recursive: true });
+    cpSync('layouts/partials/cms-gallery-images.html', join(fixture, 'layouts/partials/cms-gallery-images.html'));
     writeFileSync(join(fixture, 'layouts/partials/scroll-to-top.html'), '<div id="scroll-to-top"></div>');
     mkdirSync(join(fixture, 'layouts/_default'), { recursive: true });
     writeFileSync(join(fixture, 'layouts/_default/baseof.html'), '<!doctype html><html><body>{{ block "main" . }}{{ end }}</body></html>');
@@ -223,6 +291,11 @@ test('Hugo builds images with absent sidecars, titles only, or metadata only', a
     const html = readFileSync(join(fixture, 'public/gallery/index.html'), 'utf8');
     const data = JSON.parse(html.match(/<script id="gallery-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
     expect(data).toHaveLength(3);
+    const original = await sharp(readFileSync(join(fixture, 'public', data[0].original))).metadata();
+    const source = await sharp(preview).metadata();
+    expect(original.format).toBe('jpeg');
+    expect(original.width).toBe(source.width);
+    expect(original.height).toBe(source.height);
     expect(data[0].title).toBe('');
     expect(data[0].caption).toBe('');
     expect(data[1].caption).toContain('Title only');

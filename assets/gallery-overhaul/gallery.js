@@ -21,6 +21,51 @@ let grid;
 let lightbox;
 let opener;
 const prefetched = new Set();
+const downloadMenu = document.createElement('a');
+downloadMenu.className = 'photography-download-menu';
+downloadMenu.textContent = 'Download full-resolution JPG';
+downloadMenu.hidden = true;
+document.body.append(downloadMenu);
+let downloadOpener;
+
+function hideDownloadMenu() {
+  if (downloadMenu.hidden) return;
+  const wasFocused = document.activeElement === downloadMenu;
+  downloadMenu.hidden = true;
+  if (wasFocused) downloadOpener?.focus({ preventScroll: true });
+}
+
+document.addEventListener('contextmenu', event => {
+  const card = event.target.closest('.gallery-card');
+  const inLightbox = event.target.closest('.photography-lightbox .pswp__img');
+  const photo = card ? selected.find(photo => photo.id === card.dataset.photoId)
+    : inLightbox ? lightbox.pswp?.currSlide?.data : null;
+  hideDownloadMenu();
+  if (!photo) return;
+  event.preventDefault();
+  downloadOpener = card?.querySelector('a') || lightbox.pswp.element;
+  (inLightbox ? lightbox.pswp.element : document.body).append(downloadMenu);
+  downloadMenu.href = photo.original;
+  downloadMenu.download = `${photo.id}.jpg`;
+  downloadMenu.hidden = false;
+  downloadMenu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - downloadMenu.offsetWidth - 8))}px`;
+  downloadMenu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - downloadMenu.offsetHeight - 8))}px`;
+  downloadMenu.focus({ preventScroll: true });
+});
+downloadMenu.addEventListener('click', hideDownloadMenu);
+document.addEventListener('pointerdown', event => {
+  if (!downloadMenu.contains(event.target)) hideDownloadMenu();
+}, true);
+document.addEventListener('keydown', event => {
+  if (downloadMenu.hidden) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+    hideDownloadMenu();
+  } else if (event.key !== 'Enter') hideDownloadMenu();
+}, true);
+document.addEventListener('scroll', hideDownloadMenu, true);
+window.addEventListener('resize', hideDownloadMenu);
 
 function srcset(photo, maxWidth = Infinity) {
   return photo.variants.filter(image => image.width <= maxWidth)
@@ -44,7 +89,7 @@ function createCard(photo) {
   card.dataset.photoId = photo.id;
   const link = document.createElement('a');
   link.className = 'gallery-link';
-  link.href = photo.src;
+  link.href = photo.original;
   link.setAttribute('aria-label', `Open ${photo.alt}`);
   link.style.aspectRatio = `${photo.width} / ${photo.height}`;
   link.style.backgroundImage = `url("${photo.preview}")`;
@@ -143,7 +188,13 @@ function makeLightbox() {
     captionContent: slide => slide.data.caption || '',
     mobileCaptionOverlapRatio: 1,
   });
-  lightbox.on('destroy', () => opener?.focus({ preventScroll: true }));
+  lightbox.on('change', hideDownloadMenu);
+  lightbox.on('close', hideDownloadMenu);
+  lightbox.on('destroy', () => {
+    hideDownloadMenu();
+    document.body.append(downloadMenu);
+    opener?.focus({ preventScroll: true });
+  });
   lightbox.init();
 }
 
