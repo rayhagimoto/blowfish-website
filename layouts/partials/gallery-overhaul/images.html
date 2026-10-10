@@ -35,21 +35,10 @@
       {{- $original = $image.Resize (printf "%dx jpg q95" $image.Width) -}}
     {{- end -}}
     {{- $original = resources.Copy (printf "gallery/originals/%s.jpg" $id) $original -}}
-    {{- $maxEdge := math.Min 3000 (math.Max $image.Width $image.Height) | int -}}
-    {{- $largest := $image.Fit (printf "%dx%d webp q85" $maxEdge $maxEdge) -}}
-    {{- $variants := slice -}}
-    {{- range slice 320 640 960 1440 2048 -}}
-      {{- if lt . $largest.Width -}}
-        {{- $resized := $image.Resize (printf "%dx webp q80" .) -}}
-        {{- $variants = $variants | append (dict "src" $resized.RelPermalink "width" $resized.Width) -}}
-      {{- end -}}
-    {{- end -}}
-    {{- $variants = $variants | append (dict "src" $largest.RelPermalink "width" $largest.Width) -}}
     {{- $preview := $image.Resize "48x webp q25" -}}
-    {{- $thumb := $image.Resize (printf "%dx webp q75" (math.Min 640 $largest.Width | int)) -}}
     {{- $alt := default (printf "Photograph %s" $id) $title -}}
     {{- $caption := partial "gallery-overhaul/caption.html" (dict "title" $title "description" $description "metadata" $metadata) -}}
-    {{- $photos = $photos | append (dict "id" $id "title" $title "alt" $alt "location" (default "" $info.location) "albums" (default slice $info.albums) "caption" (strings.TrimSpace $caption) "original" $original.RelPermalink "src" $largest.RelPermalink "width" $largest.Width "height" $largest.Height "preview" (printf "data:image/webp;base64,%s" ($preview.Content | base64Encode)) "thumb" $thumb.RelPermalink "variants" $variants) -}}
+    {{- $photos = $photos | append (dict "id" $id "title" $title "alt" $alt "location" (default "" $info.location) "albums" (default slice $info.albums) "caption" (strings.TrimSpace $caption) "original" $original.RelPermalink "src" $original.RelPermalink "width" $image.Width "height" $image.Height "preview" (printf "data:image/webp;base64,%s" ($preview.Content | base64Encode))) -}}
   {{- end -}}
 {{- end -}}
 {{- return $photos -}}

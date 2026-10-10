@@ -39,9 +39,6 @@
 .photography-gallery #load-more span { margin-left: 18px; }
 .photography-gallery .photo-grid:not([style]), .photography-gallery .fallback-grid { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
 .photography-gallery .fallback-grid img { opacity: 1; }
-.photography-download-menu { position: fixed; z-index: 100001; display: block; padding: 12px 16px; border: 1px solid rgb(var(--color-neutral-500)); border-radius: 6px; background: rgb(var(--color-neutral-800)); color: rgb(var(--color-neutral)); font: inherit; font-size: 14px; text-decoration: none; box-shadow: 0 4px 20px #0004; }
-.photography-download-menu[hidden] { display: none; }
-.photography-download-menu:hover, .photography-download-menu:focus-visible { outline: 2px solid rgb(var(--color-primary-400)); outline-offset: -2px; }
 .photography-lightbox { --pswp-bg: rgb(var(--color-neutral-800)); --pswp-icon-color: rgb(var(--color-neutral)); --pswp-icon-color-secondary: rgb(var(--color-neutral-800)); --pswp-icon-stroke-color: rgb(var(--color-neutral-800)); }
 .photography-lightbox .pswp__dynamic-caption { color: rgb(var(--color-neutral)); font-family: inherit; }
 .photography-lightbox .pswp__dynamic-caption--aside { padding: 28px 20px 20px 28px; max-width: 280px; max-height: calc(100vh - 100px); overflow-y: auto; }

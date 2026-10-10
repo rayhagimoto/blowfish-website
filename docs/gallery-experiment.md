@@ -24,12 +24,12 @@ Browser checks use installed Google Chrome. They reuse an existing server on por
 ## Implementation
 
 - [InfiniteGrid 4.13.0](https://naver.github.io/egjs-infinitegrid/Guides/) owns masonry positioning, resize handling, and scroll-triggered appends. Twelve photographs are rendered per batch. Previously loaded cards remain mounted to preserve keyboard navigation; virtualization offers little benefit for this 56-image collection.
-- [PhotoSwipe 5.4.4](https://photoswipe.com/) owns lightbox navigation, focus trapping, swipe/pinch gestures, zoom, and responsive image selection. Its core is a separate bundle loaded on opening. The full album is its data source, independent of rendered gallery batches. Neighboring slides preload in both directions.
+- [PhotoSwipe 5.4.4](https://photoswipe.com/) owns lightbox navigation, focus trapping, swipe/pinch gestures, and zoom. Its core is a separate bundle loaded on opening. The full album is its data source, independent of rendered gallery batches. Neighboring slides preload in both directions.
 - [Dynamic Caption 1.2.7](https://github.com/dimsemenov/photoswipe-dynamic-caption-plugin) positions optional captions below or beside photographs, accounting for available space.
-- Hugo produces embedded 48-pixel previews and WebP candidates at 320, 640, 960, 1440, and 2048 pixels, plus a largest version fitted within 3000 × 3000. Candidates are capped at the source image's size. Gallery images use smaller candidates; PhotoSwipe updates `sizes` when zooming so the browser can request a larger version.
-- Right-clicking a photograph in the gallery or lightbox offers a full-resolution JPG download. JPEG sources are published unchanged; other image formats are converted to JPG at their original dimensions. Gallery links also point to these full-resolution files.
+- Gallery and lightbox image elements load full-resolution JPGs without `srcset`, so the browser's native Save Image As, Copy Image, and Copy Image Address actions target the original photograph. JPEG sources are published unchanged; other image formats are converted to JPG at their original dimensions. Native Copy Image copies full-resolution pixels; the browser controls the clipboard encoding, which can be PNG rather than JPEG.
+- Hugo produces embedded 48-pixel background previews for the gallery while the JPGs load. Full-resolution images use more bandwidth than resized previews.
 - The gallery uses three columns on desktop and two columns at viewport widths of 960 pixels or less, including phones and the no-JavaScript view.
-- Native lazy loading, reserved image dimensions, asynchronous decoding, high priority for the first three photographs, thumbnail neighbor prefetching, and reduced prefetching on data-saving/2G connections keep unnecessary work down. The lightbox still loads its immediately adjacent slides on constrained connections, as required by PhotoSwipe.
+- Native lazy loading, reserved image dimensions, asynchronous decoding, high priority for the first three photographs, and reduced lightbox preloading on data-saving/2G connections keep unnecessary work down. The lightbox still loads its immediately adjacent slides on constrained connections, as required by PhotoSwipe.
 - No gallery request depends on an external CDN. Library versions and the dependency lockfile are tracked. Compiled bundles and transformed images are generated during the build.
 - Gallery entry scripts and stylesheets use content fingerprints so browsers fetch new assets after updates. The shared page body grows with its content and keeps a viewport minimum height, preserving the theme background throughout long galleries and the footer position on short pages.
 - The site's dark-mode preference and appearance switcher, reduced motion, accessible album buttons, a manual load-more control, restored focus after closing, and a complete no-JavaScript gallery are included. Gallery styles are scoped to the gallery and lightbox and use the site's color variables.
@@ -53,7 +53,7 @@ Every field and the sidecar itself is optional. A title can be shown without met
 
 - `layouts/gallery-overhaul/single.html`: gallery content within the shared site layout and initial batch.
 - `layouts/partials/extend-head-uncached.html`: gallery stylesheet loaded only for this page.
-- `layouts/partials/gallery-overhaul/`: image variants, optional metadata, and cards.
+- `layouts/partials/gallery-overhaul/`: full-resolution JPGs, background previews, optional metadata, and cards.
 - `assets/gallery-overhaul/`: library integration and page styles.
 - `assets/gallery-overhaul-build/`: generated bundles, watched and published by Hugo's asset pipeline.
 - `tests/gallery/`: browser behavior and network loading checks.

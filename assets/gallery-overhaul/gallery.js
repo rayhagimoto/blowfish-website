@@ -14,63 +14,11 @@ const connection = navigator.connection;
 const constrained = connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const batchSize = 12;
-const sizes = container.dataset.imageSizes;
 let selected = photos;
 let shown = container.children.length;
 let grid;
 let lightbox;
 let opener;
-const prefetched = new Set();
-const downloadMenu = document.createElement('a');
-downloadMenu.className = 'photography-download-menu';
-downloadMenu.textContent = 'Download full-resolution JPG';
-downloadMenu.hidden = true;
-document.body.append(downloadMenu);
-let downloadOpener;
-
-function hideDownloadMenu() {
-  if (downloadMenu.hidden) return;
-  const wasFocused = document.activeElement === downloadMenu;
-  downloadMenu.hidden = true;
-  if (wasFocused) downloadOpener?.focus({ preventScroll: true });
-}
-
-document.addEventListener('contextmenu', event => {
-  const card = event.target.closest('.gallery-card');
-  const inLightbox = event.target.closest('.photography-lightbox .pswp__img');
-  const photo = card ? selected.find(photo => photo.id === card.dataset.photoId)
-    : inLightbox ? lightbox.pswp?.currSlide?.data : null;
-  hideDownloadMenu();
-  if (!photo) return;
-  event.preventDefault();
-  downloadOpener = card?.querySelector('a') || lightbox.pswp.element;
-  (inLightbox ? lightbox.pswp.element : document.body).append(downloadMenu);
-  downloadMenu.href = photo.original;
-  downloadMenu.download = `${photo.id}.jpg`;
-  downloadMenu.hidden = false;
-  downloadMenu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - downloadMenu.offsetWidth - 8))}px`;
-  downloadMenu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - downloadMenu.offsetHeight - 8))}px`;
-  downloadMenu.focus({ preventScroll: true });
-});
-downloadMenu.addEventListener('click', hideDownloadMenu);
-document.addEventListener('pointerdown', event => {
-  if (!downloadMenu.contains(event.target)) hideDownloadMenu();
-}, true);
-document.addEventListener('keydown', event => {
-  if (downloadMenu.hidden) return;
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    event.stopPropagation();
-    hideDownloadMenu();
-  } else if (event.key !== 'Enter') hideDownloadMenu();
-}, true);
-document.addEventListener('scroll', hideDownloadMenu, true);
-window.addEventListener('resize', hideDownloadMenu);
-
-function srcset(photo, maxWidth = Infinity) {
-  return photo.variants.filter(image => image.width <= maxWidth)
-    .map(image => `${image.src} ${image.width}w`).join(', ');
-}
 
 function observeImage(card) {
   const image = card.querySelector('img');
@@ -99,9 +47,7 @@ function createCard(photo) {
   image.height = photo.height;
   image.loading = 'lazy';
   image.decoding = 'async';
-  image.sizes = sizes;
-  image.srcset = srcset(photo, 960);
-  image.src = photo.thumb;
+  image.src = photo.original;
   link.append(image);
   if (photo.title || photo.location) {
     const label = document.createElement('span');
@@ -162,8 +108,7 @@ function makeLightbox() {
   lightbox?.destroy();
   const slides = selected.map(photo => ({
     ...photo,
-    srcset: srcset(photo),
-    msrc: photo.preview,
+    msrc: photo.original,
   }));
   lightbox = new PhotoSwipeLightbox({
     dataSource: slides,
@@ -188,28 +133,8 @@ function makeLightbox() {
     captionContent: slide => slide.data.caption || '',
     mobileCaptionOverlapRatio: 1,
   });
-  lightbox.on('change', hideDownloadMenu);
-  lightbox.on('close', hideDownloadMenu);
-  lightbox.on('destroy', () => {
-    hideDownloadMenu();
-    document.body.append(downloadMenu);
-    opener?.focus({ preventScroll: true });
-  });
+  lightbox.on('destroy', () => opener?.focus({ preventScroll: true }));
   lightbox.init();
-}
-
-// Warm only nearby thumbnails, once each. PhotoSwipe handles larger slide preloads.
-function prefetchNeighbors(index) {
-  if (constrained) return;
-  for (const neighbor of [selected[index - 1], selected[index + 1]]) {
-    if (!neighbor || prefetched.has(neighbor.thumb)) continue;
-    prefetched.add(neighbor.thumb);
-    const hint = document.createElement('link');
-    hint.rel = 'prefetch';
-    hint.as = 'image';
-    hint.href = neighbor.thumb;
-    document.head.append(hint);
-  }
 }
 
 container.addEventListener('click', event => {
@@ -220,13 +145,6 @@ container.addEventListener('click', event => {
   opener = link;
   lightbox.loadAndOpen(index);
 });
-
-for (const eventName of ['pointerover', 'focusin']) {
-  container.addEventListener(eventName, event => {
-    const card = event.target.closest('.gallery-card');
-    if (card) prefetchNeighbors(selected.findIndex(photo => photo.id === card.dataset.photoId));
-  });
-}
 
 filters.addEventListener('click', event => {
   const button = event.target.closest('button');

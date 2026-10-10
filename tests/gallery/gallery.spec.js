@@ -82,68 +82,44 @@ test('starts with a small batch and loads the lightbox library only when opened'
   expect(photos).toHaveLength(56);
   await expect(page.locator('.gallery-card')).toHaveCount(12);
   expect(requests.some(url => /photoswipe\.esm-/.test(url))).toBe(false);
-  const large = new Set(photos.flatMap(photo => photo.variants.filter(v => v.width > 960).map(v => v.src)));
-  expect(requests.some(url => large.has(new URL(url).pathname))).toBe(false);
-  expect(requests.some(url => photos.some(photo => new URL(url).pathname === photo.original))).toBe(false);
+  expect(requests.some(url => new URL(url).pathname === photos[0].original)).toBe(true);
+  expect(requests.some(url => /\.webp(?:\?|$)/.test(url))).toBe(false);
   await page.locator('.gallery-link').first().click();
   await expect(page.locator('.pswp')).toBeVisible();
   expect(requests.some(url => /photoswipe\.esm-/.test(url))).toBe(true);
   expect(errors).toEqual([]);
 });
 
-test('right-click downloads the original JPG from initial cards, filtered cards, and lightbox slides', async ({ page }) => {
+test('native save and copy target full-resolution JPGs in cards and lightbox slides', async ({ page }) => {
   await ready(page);
   const photos = await collection(page);
-  const menu = page.getByRole('link', { name: 'Download full-resolution JPG', exact: true });
-  const downloadOriginal = async (image, photo) => {
-    await image.click({ button: 'right' });
-    await expect(menu).toBeVisible();
-    await expect(menu).toBeFocused();
-    await expect(menu).toHaveAttribute('href', photo.original);
-    const pending = page.waitForEvent('download');
-    await menu.click();
-    const download = await pending;
-    expect(download.suggestedFilename()).toBe(`${photo.id}.jpg`);
-    expect(readFileSync(await download.path())).toEqual(readFileSync(`assets/img/gallery/${photo.id}.jpg`));
-    await expect(menu).toBeHidden();
+  const nativeImage = async (image, photo) => {
+    await expect.poll(() => image.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    const currentSrc = await image.evaluate(image => image.currentSrc);
+    expect(new URL(currentSrc).pathname).toBe(photo.original);
+    expect(await image.evaluate(image => image.srcset)).toBe('');
+    const source = readFileSync(`assets/img/gallery/${photo.id}.jpg`);
+    const metadata = await sharp(source).metadata();
+    expect(await image.evaluate(image => ({ width: image.naturalWidth, height: image.naturalHeight })))
+      .toEqual({ width: metadata.width, height: metadata.height });
+    const response = await page.request.get(currentSrc);
+    expect(response.headers()['content-type']).toContain('image/jpeg');
+    expect(await response.body()).toEqual(source);
+    expect(await image.evaluate(image => image.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 })))).toBe(true);
+    await expect(page.locator('.photography-download-menu')).toHaveCount(0);
   };
 
-  await downloadOriginal(page.locator('.gallery-card img').first(), photos[0]);
+  await nativeImage(page.locator('.gallery-card img').first(), photos[0]);
   await page.getByRole('button', { name: 'Japan', exact: true }).click();
   const japan = photos.filter(photo => photo.albums.includes('Japan'));
-  await downloadOriginal(page.locator('.gallery-card img').nth(1), japan[1]);
+  await nativeImage(page.locator('.gallery-card img').nth(1), japan[1]);
   await page.getByRole('button', { name: 'All photographs', exact: true }).click();
   await page.locator('.gallery-link').first().click();
   await expect(page.locator('.pswp')).toBeFocused();
-  await downloadOriginal(page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)'), photos[0]);
+  await nativeImage(page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)'), photos[0]);
   for (let index = 0; index < 14; index++) await page.keyboard.press('ArrowRight');
   await expect(page.locator('.pswp__counter')).toHaveText('15 / 56');
-  await downloadOriginal(page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)'), photos[14]);
-});
-
-test('right-click download menu fits the viewport and dismisses without closing the lightbox', async ({ page }) => {
-  await ready(page);
-  const menu = page.getByRole('link', { name: 'Download full-resolution JPG', exact: true });
-  await page.locator('.gallery-card img').first().click({ button: 'right' });
-  await page.keyboard.press('Escape');
-  await expect(menu).toBeHidden();
-  await expect(page.locator('.gallery-link').first()).toBeFocused();
-  await page.locator('.gallery-link').first().click();
-  await expect(page.locator('.pswp')).toBeFocused();
-  await page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)').dispatchEvent('contextmenu', { clientX: 1439, clientY: 999 });
-  const bounds = await menu.boundingBox();
-  expect(bounds.x + bounds.width).toBeLessThanOrEqual(1440 - 8);
-  expect(bounds.y + bounds.height).toBeLessThanOrEqual(1000 - 8);
-  await page.keyboard.press('Escape');
-  await expect(menu).toBeHidden();
-  await expect(page.locator('.pswp')).toBeVisible();
-  await expect(page.locator('.pswp')).toBeFocused();
-  await page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)').click({ button: 'right' });
-  await page.keyboard.press('ArrowRight');
-  await expect(menu).toBeHidden();
-  await expect(page.locator('.pswp__counter')).toHaveText('2 / 56');
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.pswp')).toHaveCount(0);
+  await nativeImage(page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)'), photos[14]);
 });
 
 test('navigates the entire collection, preloads both directions, zooms, and restores focus', async ({ page }) => {
@@ -157,13 +133,15 @@ test('navigates the entire collection, preloads both directions, zooms, and rest
   await expect(page.locator('.pswp')).toBeFocused();
   await expect(page.locator('.pswp__counter')).toHaveText('6 / 56');
   await expect(page.locator('.pswp__item[aria-hidden="false"] .photo-title')).toHaveText(photos[5].title);
-  await expect.poll(() => [4, 6].every(index => photos[index].variants.some(v => loaded.has(v.src)))).toBe(true);
+  await expect.poll(() => [4, 6].every(index => loaded.has(photos[index].original))).toBe(true);
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('.pswp__counter')).toHaveText('5 / 56');
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.pswp__counter')).toHaveText('6 / 56');
+  const image = page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)');
+  const beforeZoom = await image.boundingBox();
   await page.getByRole('button', { name: 'Zoom photograph', exact: true }).click();
-  await expect.poll(() => photos[5].variants.some(v => v.width >= 1440 && loaded.has(v.src))).toBe(true);
+  await expect.poll(async () => (await image.boundingBox()).width).toBeGreaterThan(beforeZoom.width);
   for (let index = 0; index < 9; index++) await page.keyboard.press('ArrowRight');
   await expect(page.locator('.pswp__counter')).toHaveText('15 / 56');
   await expect(page.locator('.gallery-card')).toHaveCount(12);
@@ -257,6 +235,8 @@ test('all images and their captions remain available without JavaScript', async 
   await page.goto('http://127.0.0.1:9099/gallery/');
   await expect(page.locator('.gallery-card')).toHaveCount(56);
   await expect(page.locator('.gallery-link').first()).toHaveAttribute('href', /\/gallery\/originals\/.*\.jpg$/);
+  await expect(page.locator('.gallery-card img').first()).toHaveAttribute('src', /\/gallery\/originals\/.*\.jpg$/);
+  await expect(page.locator('.gallery-card img').first()).not.toHaveAttribute('srcset');
   const first = await page.locator('.gallery-card').first().boundingBox();
   const second = await page.locator('.gallery-card').nth(1).boundingBox();
   expect(second.x).toBeCloseTo(first.x + first.width + 16, 0);
@@ -269,7 +249,7 @@ test('all images and their captions remain available without JavaScript', async 
 test('Hugo builds images with absent sidecars, titles only, or metadata only', async ({ page }) => {
   await ready(page);
   const [photo] = await collection(page);
-  const preview = await (await page.request.get(photo.thumb)).body();
+  const preview = await sharp(await (await page.request.get(photo.original)).body()).resize(640).webp().toBuffer();
   const fixture = mkdtempSync(join(tmpdir(), 'gallery-metadata-'));
   try {
     mkdirSync(join(fixture, 'assets/img/gallery'), { recursive: true });

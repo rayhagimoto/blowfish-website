@@ -15,7 +15,7 @@
         </div>
         <p class="photo-count"><span id="photo-count">{{ len $photos }}</span> photographs</p>
       </div>
-      <div id="photo-grid" class="photo-grid" data-image-sizes="{{ partial "gallery-overhaul/sizes.html" . }}">
+      <div id="photo-grid" class="photo-grid">
         {{ range $index, $photo := first 12 $photos }}{{ partial "gallery-overhaul/card.html" (dict "photo" $photo "eager" (lt $index 3)) }}{{ end }}
       </div>
       <div class="gallery-end">
