@@ -30,6 +30,7 @@ assets/css/compiled
 
 # Experimental gallery bundles and browser test output
 /static/gallery-overhaul/
+/assets/gallery-overhaul-build/
 /.playwright-cli/
 /test-results/
 /playwright-report/

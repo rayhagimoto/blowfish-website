@@ -27,6 +27,8 @@ test('shares the site theme and preserves its appearance switcher', async ({ pag
   await ready(page);
   expect(await styles()).toEqual(siteStyles);
   await expect(page.locator('link[href*="main.bundle"]')).toHaveAttribute('href', siteCss);
+  await expect(page.locator('link[href*="/gallery-overhaul/gallery."]')).toHaveAttribute('href', /gallery\.[a-f0-9]+\.css$/);
+  await expect(page.locator('script[src*="/gallery-overhaul/gallery."]')).toHaveAttribute('src', /gallery\.[a-f0-9]+\.js$/);
   await expect(page.getByRole('button', { name: 'Search', exact: true }).first()).toBeVisible();
   await expect(page.locator('#site-footer')).toHaveCount(1);
   await page.getByRole('button', { name: 'Dark mode switcher', exact: true }).first().click();
@@ -34,6 +36,38 @@ test('shares the site theme and preserves its appearance switcher', async ({ pag
   expect((await styles()).background).not.toBe(siteStyles.background);
   const accent = await page.evaluate(() => `rgb(${getComputedStyle(document.documentElement).getPropertyValue('--color-primary-400').trim()})`);
   await expect(page.locator('.album-filters [aria-pressed="true"]')).toHaveCSS('background-color', accent);
+});
+
+test('keeps the themed background through the growing gallery and appearance changes', async ({ page }) => {
+  for (const width of [543, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.addInitScript(() => localStorage.setItem('appearance', 'dark'));
+    await ready(page);
+    const background = () => page.evaluate(() => {
+      let element = document.elementFromPoint(innerWidth / 2 - document.body.clientWidth / 2 + 12, innerHeight - 40);
+      while (element) {
+        const color = getComputedStyle(element).backgroundColor;
+        if (color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') return color;
+        element = element.parentElement;
+      }
+      return 'transparent';
+    });
+    const dark = await page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor);
+    await page.evaluate(() => window.scrollTo(0, 650));
+    await expect.poll(background).toBe(dark);
+    for (let batch = 0; batch < 5; batch++) {
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(250);
+    }
+    await expect(page.locator('.gallery-card')).toHaveCount(56);
+    await expect.poll(background).toBe(dark);
+    const switcher = page.getByRole('button', { name: 'Dark mode switcher', exact: true });
+    await switcher.filter({ visible: true }).click();
+    const light = await page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor);
+    expect(light).not.toBe(dark);
+    await expect.poll(background).toBe(light);
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
+  }
 });
 
 test('starts with a small batch and loads the lightbox library only when opened', async ({ page }) => {
@@ -173,6 +207,8 @@ test('Hugo builds images with absent sidecars, titles only, or metadata only', a
   try {
     mkdirSync(join(fixture, 'assets/img/gallery'), { recursive: true });
     mkdirSync(join(fixture, 'content/gallery'), { recursive: true });
+    mkdirSync(join(fixture, 'assets/gallery-overhaul-build'), { recursive: true });
+    writeFileSync(join(fixture, 'assets/gallery-overhaul-build/gallery.js'), '');
     cpSync('layouts/gallery-overhaul', join(fixture, 'layouts/gallery-overhaul'), { recursive: true });
     cpSync('layouts/partials/gallery-overhaul', join(fixture, 'layouts/partials/gallery-overhaul'), { recursive: true });
     writeFileSync(join(fixture, 'layouts/partials/scroll-to-top.html'), '<div id="scroll-to-top"></div>');

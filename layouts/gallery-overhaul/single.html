@@ -32,5 +32,10 @@
     {{ partial "scroll-to-top.html" . }}
   {{ end }}
   <script id="gallery-data" type="application/json">{{ $photos | jsonify | safeJS }}</script>
-  <script type="module" src="{{ "gallery-overhaul/gallery.js" | relURL }}"></script>
+  {{ range resources.Match "gallery-overhaul-build/*-*.js" }}
+    {{ $chunk := resources.Copy (printf "gallery-overhaul/%s" (path.Base .Name)) . }}
+    {{ $publish := $chunk.RelPermalink }}
+  {{ end }}
+  {{ $js := resources.Get "gallery-overhaul-build/gallery.js" | resources.Copy "gallery-overhaul/gallery.js" | fingerprint }}
+  <script type="module" src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}"></script>
 {{ end }}

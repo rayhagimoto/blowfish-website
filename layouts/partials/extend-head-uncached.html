@@ -1,3 +1,4 @@
 {{ if eq .Type "gallery-overhaul" }}
-  <link rel="stylesheet" href="{{ "gallery-overhaul/gallery.css" | relURL }}">
+  {{ $css := resources.Get "gallery-overhaul-build/gallery.css" | resources.Copy "gallery-overhaul/gallery.css" | fingerprint }}
+  <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
 {{ end }}
