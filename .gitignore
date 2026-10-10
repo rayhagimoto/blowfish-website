@@ -34,3 +34,19 @@ assets/css/compiled
 /.playwright-cli/
 /test-results/
 /playwright-report/
+
+# Neon local context and credentials
+.neon
+.env
+.env.*
+!.env.example
+
+# CMS generated assets and private development files
+/.cms-hugo/
+/.cms-local/
+/static/admin/app.js
+/static/admin/app.css
+/static/admin/vendor/
+/static/cms-math/
+/netlify/functions/*.zip
+/netlify/functions/manifest.json

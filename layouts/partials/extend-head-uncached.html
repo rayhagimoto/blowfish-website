@@ -2,3 +2,6 @@
   {{ $css := resources.Get "gallery-overhaul-build/gallery.css" | resources.Copy "gallery-overhaul/gallery.css" | fingerprint }}
   <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
 {{ end }}
+{{ if .Params.cms }}
+  <link rel="stylesheet" href="{{ "cms-math/katex.min.css" | relURL }}">
+{{ end }}

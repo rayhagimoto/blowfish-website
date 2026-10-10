@@ -7,9 +7,13 @@ import { base32 } from '@better-auth/utils/base32';
 import { createAuth, handleAuth, requireOwner, authRouteAllowed } from '../../cms/auth.mjs';
 import { renderMarkdown } from '../../cms/markdown.mjs';
 import { createHandler } from '../../cms/api.mjs';
-import { uploadImage } from '../../cms/media.mjs';
+import { uploadImage, readImage } from '../../cms/media.mjs';
 import sharp from 'sharp';
 import { crc32, deflateSync } from 'node:zlib';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { seedPreviews } from '../../scripts/cms-seed-previews.mjs';
 
 const config = {
   origin: 'https://cms.example.test',
@@ -159,6 +163,45 @@ test('media deletion protects referenced and imported files and preserves the da
   }
 });
 
+test('legacy thumbnails remain private, use only canonical keys and do not need public publication', async () => {
+  const bytes = await sharp({ create: { width: 20, height: 10, channels: 3, background: '#cc7700' } }).webp().toBuffer();
+  const previewKey = `cms/${imageId}-thumb.webp`;
+  const row = { id: imageId, legacy_path: 'assets/img/gallery/private-photo.jpg',
+    content_type: 'image/jpeg', preview_object_key: previewKey, preview_size: bytes.length };
+  const calls = { database: [], storage: [] };
+  const db = { async query(sql, parameters) {
+    calls.database.push({ sql, parameters });
+    if (sql.startsWith('SELECT * FROM cms.media')) return { rows: [row] };
+    throw new Error('Private thumbnail must not query public publication');
+  } };
+  const storage = { async get(key) { calls.storage.push(key); return bytes; } };
+  const response = await readImage(imageId, { db, storage, config: { ...config, storageMode: 'netlify' } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'image/webp');
+  assert.equal(response.headers.get('cache-control'), 'private, no-store');
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('location'), null);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+  assert.deepEqual(calls.storage, [previewKey]);
+  assert.equal(calls.database.length, 1);
+
+  for (const key of [`cms/${imageId}.webp`, `cms/${imageId}-thumb.webp/extra`, '../private-secret', `cms/${imageId.toUpperCase()}-thumb.webp`]) {
+    calls.storage.length = 0;
+    row.preview_object_key = key;
+    await assert.rejects(readImage(imageId, { db, storage, config: { ...config, storageMode: 'netlify' } }), error => error.status === 404);
+    assert.equal(calls.storage.length, 0);
+  }
+  row.preview_object_key = previewKey;
+  await assert.rejects(readImage(imageId, { db, storage: { async get() { return null; } }, config: { ...config, storageMode: 'netlify' } }), error => error.status === 404);
+  for (const id of ['../private-secret', imageId.toUpperCase(), `${imageId}-thumb`]) {
+    calls.database.length = 0;
+    calls.storage.length = 0;
+    await assert.rejects(readImage(id, { db, storage, config }), error => error.status === 404);
+    assert.equal(calls.database.length, 0);
+    assert.equal(calls.storage.length, 0);
+  }
+});
+
 class Browser {
   cookies = new Map();
 
@@ -220,17 +263,20 @@ test('published Markdown retains formatting and math while dropping executable c
   assert.doesNotMatch(html, /<script|onerror=|href="javascript:|src="data:/i);
 });
 
-function uploadFixture({ budget = 512 * 1024 * 1024, failInsert = false, failCommit = false, failSet = false } = {}) {
-  const calls = { sql: [], set: [], delete: [] };
+function uploadFixture({ budget = 512 * 1024 * 1024, used = 0, failInsert = false, failCommit = false, failSet = false, preserveCommitted = false } = {}) {
+  const calls = { sql: [], set: [], delete: [], commits: 0 };
+  let inserted;
   const client = { release() {}, async query(sql, parameters) {
     calls.sql.push(sql);
-    if (sql.includes('sum(size)')) return { rows: [{ bytes: 0 }] };
+    if (sql.includes('AS bytes FROM cms.media')) return { rows: [{ bytes: used }] };
     if (sql.startsWith('INSERT INTO cms.media')) {
       if (failInsert) throw new Error('Simulated insert failure');
       const [id, object_key, filename, content_type, size, width, height] = parameters;
-      return { rows: [{ id, object_key, filename, content_type, size, width, height }] };
+      inserted = { id, object_key, filename, content_type, size, width, height };
+      return { rows: [inserted] };
     }
-    if (sql === 'COMMIT' && failCommit) throw new Error('Simulated commit failure');
+    if (sql.startsWith('SELECT object_key FROM cms.media')) return { rows: preserveCommitted && inserted ? [{ object_key: inserted.object_key }] : [] };
+    if (sql === 'COMMIT' && failCommit && calls.commits++ === 0) throw new Error('Simulated commit failure');
     return { rows: [] };
   } };
   return {
@@ -278,6 +324,7 @@ test('image upload validates decoded content, converts safely, strips metadata a
   assert.equal(converted.icc, undefined);
   assert.equal(converted.xmp, undefined);
   assert.equal(fixture.calls.sql.some(sql => sql.includes('pg_advisory_xact_lock')), true);
+  assert.equal(fixture.calls.sql.some(sql => sql.includes('preview_size') && sql.includes('CASE WHEN object_key IS NOT NULL THEN size ELSE 0 END')), true);
 
   for (const bytes of [Buffer.from('not an image'), oversizedPixelPNG(),
     Buffer.from('<svg width="1" height="1" xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')]) {
@@ -292,13 +339,81 @@ test('image upload validates decoded content, converts safely, strips metadata a
   const overBudget = uploadFixture({ budget: 0 });
   await assert.rejects(uploadImage(uploadRequest(jpeg), overBudget), error => error.status === 413);
   assert.equal(overBudget.calls.set.length, 0);
+  assert.equal(overBudget.calls.delete.length, 0);
   assert.equal(overBudget.calls.sql.includes('ROLLBACK'), true);
+  const previewsFillBudget = uploadFixture({ budget: 100, used: 100 });
+  await assert.rejects(uploadImage(uploadRequest(jpeg), previewsFillBudget), error => error.status === 413);
+  assert.equal(previewsFillBudget.calls.set.length, 0);
+  assert.equal(previewsFillBudget.calls.delete.length, 0);
   for (const failure of [{ failInsert: true }, { failCommit: true }, { failSet: true }]) {
     const failed = uploadFixture(failure);
     await assert.rejects(uploadImage(uploadRequest(jpeg), failed));
     assert.deepEqual(failed.calls.delete, [failed.calls.set[0].key]);
     assert.equal(failed.calls.sql.includes('ROLLBACK'), true);
+    assert.equal(failed.calls.sql.filter(sql => sql.includes('pg_advisory_xact_lock')).length, 2);
   }
+  const ambiguousCommit = uploadFixture({ failCommit: true, preserveCommitted: true });
+  await assert.rejects(uploadImage(uploadRequest(jpeg), ambiguousCommit));
+  assert.equal(ambiguousCommit.calls.set.length, 1);
+  assert.equal(ambiguousCommit.calls.delete.length, 0);
+  assert.equal(ambiguousCommit.calls.sql.some(sql => sql.startsWith('SELECT object_key FROM cms.media') && sql.endsWith('FOR UPDATE')), true);
+});
+
+test('private legacy preview seeding strips metadata, respects the combined budget and preserves concurrently committed previews during cleanup', async () => {
+  const rootDir = await mkdtemp(path.join(tmpdir(), 'cms-private-previews-'));
+  const legacyPath = 'assets/img/gallery/photo.jpg';
+  const previewKey = `cms/${imageId}-thumb.webp`;
+  await mkdir(path.join(rootDir, 'assets/img/gallery'), { recursive: true });
+  const source = await sharp({ create: { width: 20, height: 10, channels: 3, background: '#cc7700' } })
+    .withMetadata({ orientation: 6 }).withExif({ IFD0: { Artist: 'Private legacy author' } }).jpeg().toBuffer();
+  await writeFile(path.join(rootDir, legacyPath), source);
+  const fixture = ({ used = 0, budget = 512 * 1024 * 1024, existing = false, failSet = false, failUpdate = false, failCommit = false, preserveConcurrent = false } = {}) => {
+    const calls = { sql: [], set: [], delete: [], checks: 0, commits: 0 };
+    const client = { release() {}, async query(sql) {
+      calls.sql.push(sql);
+      if (sql.startsWith('SELECT preview_object_key')) {
+        calls.checks++;
+        return { rows: [{ preview_object_key: existing || (preserveConcurrent && calls.checks > 1) ? previewKey : null }] };
+      }
+      if (sql.includes('AS bytes FROM cms.media')) return { rows: [{ bytes: used }] };
+      if (sql.startsWith('UPDATE cms.media') && failUpdate) throw new Error('Simulated preview row update failure');
+      if (sql === 'COMMIT' && failCommit && calls.commits++ === 0) throw new Error('Simulated preview commit failure');
+      return { rows: [] };
+    } };
+    return { calls, db: { async query() { return { rows: [{ id: imageId, legacy_path: legacyPath }] }; }, async connect() { return client; } },
+      storage: { async set(key, bytes) { calls.set.push({ key, bytes }); if (failSet) throw new Error('Simulated interrupted preview write'); }, async delete(key) { calls.delete.push(key); } },
+      config: { mediaBudgetBytes: budget }, rootDir };
+  };
+  try {
+    const seeded = fixture();
+    assert.equal(await seedPreviews(seeded), 1);
+    assert.equal(seeded.calls.set[0].key, previewKey);
+    const metadata = await sharp(seeded.calls.set[0].bytes).metadata();
+    assert.equal(metadata.format, 'webp');
+    assert.equal(metadata.width, 10);
+    assert.equal(metadata.height, 20);
+    assert.equal(metadata.exif, undefined);
+    assert.equal(metadata.icc, undefined);
+    assert.equal(metadata.xmp, undefined);
+    assert.equal(seeded.calls.sql.some(sql => sql.includes('preview_size') && sql.includes('CASE WHEN object_key IS NOT NULL THEN size ELSE 0 END')), true);
+    const full = fixture({ budget: 100, used: 100 });
+    await assert.rejects(seedPreviews(full), /storage limit/i);
+    assert.equal(full.calls.set.length, 0);
+    assert.equal(full.calls.delete.length, 0);
+    const previous = fixture({ existing: true });
+    assert.equal(await seedPreviews(previous), 0);
+    assert.equal(previous.calls.set.length, 0);
+    for (const failure of [{ failSet: true }, { failUpdate: true }, { failCommit: true }]) {
+      const failed = fixture(failure);
+      await assert.rejects(seedPreviews(failed));
+      assert.deepEqual(failed.calls.delete, [previewKey]);
+      assert.equal(failed.calls.sql.includes('ROLLBACK'), true);
+    }
+    const concurrent = fixture({ failCommit: true, preserveConcurrent: true });
+    await assert.rejects(seedPreviews(concurrent));
+    assert.deepEqual(concurrent.calls.delete, []);
+    assert.equal(concurrent.calls.checks, 2);
+  } finally { await rm(rootDir, { recursive: true, force: true }); }
 });
 
 test('real authentication enforces MFA, revocation, recovery and trusted-browser expiration', async () => {

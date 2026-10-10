@@ -59,10 +59,10 @@ hugo server --buildDrafts
 ### Build
 
 ```bash
-hugo --gc --minify
+npm run build
 ```
 
-Outputs the static site to `public/`. `--gc` cleans unused cache files; `--minify` minifies HTML/CSS/JS.
+Builds the gallery, admin editor assets, and public Hugo site. Outputs the static site to `public/`. `--gc` cleans unused cache files; `--minify` minifies HTML/CSS/JS.
 
 ### Deploy
 
@@ -155,3 +155,23 @@ uv run scripts/fix_gallery_filenames.py
 ```
 
 Flattens subdirectory-organized images into the flat `NNNN.jpg` naming scheme. Converts PNGs to JPG. Run from the project root.
+
+---
+
+## Admin CMS
+
+The CMS implementation is complete. Its production configuration and first administrator setup are separate from the public Hugo site. See [setup, security, free-tier limits, and verification](docs/CMS.md).
+
+The admin studio supports mandatory authenticator 2FA, recovery codes, revocable trusted browsers, Markdown/source/split/hybrid/rich-text editing, equations, image paste/drop, and gallery albums, captions, metadata, and ordering. Videos remain a future planned feature.
+
+Netlify hosts the admin interface, API, and private images; the linked Neon Free project stores content and authentication records. Public pages remain static and use explicitly published snapshots.
+
+```bash
+npm run cms:prepare
+npm run cms:migrate
+npm run cms:import
+npm run cms:previews
+npm run dev:cms
+```
+
+These commands use `.env.cms-development.local`. Create the isolated development branch and pull its PostgreSQL connection first; never substitute the production connection for testing. Private credentials, previews, and generated editor files are ignored by Git.

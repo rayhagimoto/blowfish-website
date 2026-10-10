@@ -1,0 +1,16 @@
+{{- $images := slice -}}
+{{- $manifest := index site.Data "cms-gallery" -}}
+{{- if and $manifest $manifest.enabled -}}
+  {{- range $manifest.images -}}
+    {{- $image := resources.Get . -}}
+    {{- if not $image -}}{{- errorf "Published CMS gallery image is missing: %s" . -}}{{- end -}}
+    {{- $images = $images | append $image -}}
+  {{- end -}}
+{{- else -}}
+  {{- range sort (resources.Match "img/gallery/*") "Name" -}}
+    {{- if eq .ResourceType "image" -}}
+      {{- $images = $images | append . -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- return $images -}}

@@ -1,5 +1,5 @@
 {{- $photos := slice -}}
-{{- range sort (resources.Match "img/gallery/*") "Name" -}}
+{{- range partial "cms-gallery-images.html" . -}}
   {{- if eq .ResourceType "image" -}}
     {{- $image := . -}}
     {{- $id := path.BaseName .Name -}}
@@ -16,9 +16,12 @@
     {{- $tags := dict -}}
     {{- with $image.Exif -}}
       {{- $tags = .Tags -}}
-      {{- if not .Date.IsZero -}}
+      {{- if and (not $info.date) (not .Date.IsZero) -}}
         {{- $metadata = $metadata | append (dict "label" "Taken" "value" (.Date.Format "2 January 2006")) -}}
       {{- end -}}
+    {{- end -}}
+    {{- with $info.date -}}
+      {{- $metadata = $metadata | append (dict "label" "Taken" "value" .) -}}
     {{- end -}}
     {{- range slice (dict "label" "Camera" "value" (default $tags.Model $info.camera)) (dict "label" "Lens" "value" (default $tags.LensModel $info.lens)) (dict "label" "ISO" "value" (default $tags.ISOSpeedRatings $tags.ISO)) -}}
       {{- $field := . -}}

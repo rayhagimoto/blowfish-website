@@ -8,8 +8,8 @@
       photography
     </h1>
 
-    {{ $images := resources.Match "img/gallery/*.{jpg,jpeg,png,JPG,JPEG,PNG}" }}
-    {{ $images = sort $images ".Name" "asc" }}
+    {{ $images := partial "cms-gallery-images.html" . }}
+    {{ $cmsGallery := index site.Data "cms-gallery" }}
 
     {{ $gallerySmall := site.Params.gallerySmallLongEdge | default 480 }}
     {{ $galleryMedium := site.Params.galleryMediumLongEdge | default 960 }}
@@ -64,6 +64,9 @@
       {{- $iso := $meta.iso | default $exifISO }}
       {{- $shutter := $meta.shutter_speed | default $exifShutter }}
       {{- $albums := $meta.albums | default (slice "Japan") }}
+      {{- if and $cmsGallery $cmsGallery.enabled }}
+        {{- $albums = $meta.albums | default slice }}
+      {{- end }}
       <div class="gallery-item"
            data-src="{{ $small.RelPermalink }}"
            data-medium-src="{{ $medium.RelPermalink }}"

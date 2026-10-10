@@ -7,16 +7,51 @@
     "build:gallery": "esbuild assets/gallery-overhaul/gallery.js --bundle --splitting --format=esm --minify --target=es2020 --outdir=assets/gallery-overhaul-build --chunk-names=[name]-[hash]",
     "watch:gallery": "npm run build:gallery -- --watch",
     "dev": "npm run build:gallery && hugo server --port 9099 --bind 127.0.0.1 --disableFastRender",
-    "build": "npm run build:gallery && hugo --gc --minify"
+    "build": "npm run build:gallery && npm run build:admin && node scripts/cms-hugo-build.mjs",
+    "build:admin": "node scripts/build-admin.mjs",
+    "test:cms": "node --test tests/cms/*.test.mjs",
+    "test:cms:ui": "playwright test --config cms/admin/playwright.config.mjs",
+    "cms:prepare": "node scripts/cms-prepare.mjs development",
+    "cms:prepare:production": "node scripts/cms-prepare.mjs production",
+    "cms:migrate": "node --env-file=.env.cms-development.local scripts/cms-migrate.mjs",
+    "cms:import": "node --env-file=.env.cms-development.local scripts/cms-import.mjs",
+    "dev:cms": "npm run build:admin && node --env-file=.env.cms-development.local scripts/cms-dev.mjs",
+    "cms:previews": "node --env-file=.env.cms-development.local scripts/cms-seed-previews.mjs"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@egjs/infinitegrid": "4.13.0",
+    "@iarna/toml": "^2.2.5",
+    "@neon/config": "^1.8.6",
+    "@neon/env": "^1.5.3",
+    "@netlify/blobs": "^11.1.4",
+    "better-auth": "^1.7.7",
+    "katex": "^0.18.10",
+    "kysely": "^0.29.6",
+    "pg": "^8.23.1",
     "photoswipe": "5.4.4",
-    "photoswipe-dynamic-caption-plugin": "1.2.7"
+    "photoswipe-dynamic-caption-plugin": "1.2.7",
+    "qrcode": "^1.5.4",
+    "rehype-katex": "^7.0.1",
+    "rehype-sanitize": "^6.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "sharp": "^0.35.5",
+    "unified": "^11.0.5",
+    "vditor": "^4.0.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
     "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "katex": "$katex"
   }
 }
