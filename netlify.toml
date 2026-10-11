@@ -17,6 +17,9 @@
 [context.deploy-preview.environment]
   HUGO_VERSION = "0.150.1"
 
+[[plugins]]
+  package = "./netlify/plugins/cms-storage"
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"

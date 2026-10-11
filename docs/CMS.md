@@ -56,6 +56,8 @@ node --env-file=.env.cms-development.local scripts/cms-hugo-build.mjs
 
 `npm run build` also builds gallery/admin assets. Supply the same private environment and `CMS_ENABLED=1` when building CMS publications. With CMS disabled the repository content builds as before; with it enabled a database/blob/export failure stops deployment rather than publishing an incomplete site.
 
+The local `netlify/plugins/cms-storage` build plugin passes Netlify's ephemeral Blobs context to the build command when CMS uses hosted storage. Netlify normally supplies this context only to plugins; exporting the first published upload needs it in the CMS build too. Credentials stay in the build environment and are never written into public assets or repository settings. No account-wide token needs to be configured on the site. See [Netlify Blobs authentication](https://docs.netlify.com/build/data-and-storage/netlify-blobs/) and [build plugin environment variables](https://docs.netlify.com/extend/develop-and-share/develop-build-plugins/).
+
 ## Production activation
 
 Run activation only when ready to deploy the reviewed changes. Test commands must continue to use the isolated branch.
