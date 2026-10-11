@@ -9,7 +9,7 @@ import './app.css';
 const OWNER = 'rayhagimoto@gmail.com';
 const app = document.querySelector('#app');
 const modal = document.querySelector('#modal');
-const state = { user: null, tab: 'posts', posts: [], media: [], gallery: null, gallerySelection: new Set(), galleryBusy: false, editor: null, post: null,
+const state = { user: null, tab: 'posts', posts: [], media: [], gallery: null, gallerySelection: new Set(), gallerySelectionAnchor: null, galleryBusy: false, editor: null, post: null,
   dirty: false, savePromise: null, saveTimer: null, conflict: false, editVersion: 0, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light', font: 'mono', mode: 'ir', uploads: 0, editorReady: false, editorMarkdown: '', navigating: false };
 window.addEventListener('appearancechange', () => setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light'));
 const setupToken = new URLSearchParams(location.hash.slice(1)).get('setup') || '';
@@ -522,9 +522,9 @@ function bindGalleryAction(selector, handler) {
 }
 async function galleryView() {
   const [result, media] = await Promise.all([api('/gallery'), api('/media')]); state.gallery = result.gallery; state.media = media.media;
-  state.gallerySelection.clear();
+  state.gallerySelection.clear(); state.gallerySelectionAnchor = null;
   document.querySelector('#content').innerHTML = `<section class="gallery-page" id="gallery-workspace">` +
-    heading('Curate the gallery.', 'Select photos, then choose an action.',
+    heading('Curate the gallery.', 'Click photos to edit; use checkboxes to select.',
       galleryButton('gallery-upload', 'upload', 'Upload photos') + galleryButton('gallery-library', 'library', 'Choose library photos') +
       galleryButton('gallery-save', 'save', 'Save draft') + galleryButton('gallery-publish', 'publish', 'Publish gallery', 'gallery-publish')) +
     `<input class="file-input" id="gallery-files" type="file" accept="image/jpeg,image/png,image/webp" multiple tabindex="-1" aria-label="Upload photo files">
@@ -545,12 +545,12 @@ async function galleryView() {
   bindGalleryAction('#gallery-up', () => moveGallerySelection(-1)); bindGalleryAction('#gallery-down', () => moveGallerySelection(1));
   bindGalleryAction('#gallery-remove', () => {
     const count = state.gallerySelection.size;
-    state.gallery.items = state.gallery.items.filter(item => !state.gallerySelection.has(item.mediaId)); state.gallerySelection.clear();
+    state.gallery.items = state.gallery.items.filter(item => !state.gallerySelection.has(item.mediaId)); state.gallerySelection.clear(); state.gallerySelectionAnchor = null;
     galleryChanged(); renderGallery(); notice(`${count} ${count === 1 ? 'photograph removed' : 'photographs removed'} from the gallery draft. Library originals are kept.`);
   });
-  document.querySelector('#gallery-album').addEventListener('change', () => { state.gallerySelection.clear(); renderGallery(); });
+  document.querySelector('#gallery-album').addEventListener('change', () => { state.gallerySelection.clear(); state.gallerySelectionAnchor = null; renderGallery(); });
   document.querySelector('#gallery-select-all').addEventListener('change', event => {
-    state.gallerySelection = new Set(event.target.checked ? visibleGalleryItems().map(item => item.mediaId) : []); updateGalleryToolbar();
+    state.gallerySelection = new Set(event.target.checked ? visibleGalleryItems().map(item => item.mediaId) : []); state.gallerySelectionAnchor = null; updateGalleryToolbar();
   });
   document.querySelector('#gallery-files').addEventListener('change', async event => {
     await galleryUploadFiles([...event.target.files]); event.target.value = '';
@@ -581,7 +581,7 @@ function addGalleryMedia(media) {
 async function galleryUploadFiles(files) {
   if (!files.length) return;
   if (state.galleryBusy) { notice('Wait for the current gallery action to finish.', true); return; }
-  state.galleryBusy = true; state.uploads++; state.gallerySelection.clear(); document.querySelector('#gallery-album').value = '';
+  state.galleryBusy = true; state.uploads++; state.gallerySelection.clear(); state.gallerySelectionAnchor = null; document.querySelector('#gallery-album').value = '';
   const status = document.querySelector('#gallery-upload-status'); status.hidden = false; updateGalleryToolbar(); let added = 0; const failures = [];
   try {
     for (let index = 0; index < files.length; index++) {
@@ -603,7 +603,7 @@ async function galleryLibraryDialog() {
   const selected = () => [...modal.querySelectorAll('[name=library-photo]:checked')].map(input => input.value);
   modal.querySelectorAll('[name=library-photo]').forEach(input => input.addEventListener('change', () => { modal.querySelector('#gallery-library-add').disabled = !selected().length; }));
   bindAction('#gallery-library-add', () => {
-    const ids = selected(); document.querySelector('#gallery-album').value = ''; state.gallerySelection.clear();
+    const ids = selected(); document.querySelector('#gallery-album').value = ''; state.gallerySelection.clear(); state.gallerySelectionAnchor = null;
     ids.forEach(id => { if (addGalleryMedia(state.media.find(media => media.id === id))) state.gallerySelection.add(id); });
     modal.close(); renderGallery();
   }, modal);
@@ -615,11 +615,12 @@ function visibleGalleryItems() {
 function updateGalleryToolbar() {
   const items = visibleGalleryItems(); const visible = new Set(items.map(item => item.mediaId));
   state.gallerySelection.forEach(id => { if (!visible.has(id)) state.gallerySelection.delete(id); });
+  if (!visible.has(state.gallerySelectionAnchor)) state.gallerySelectionAnchor = null;
   const count = state.gallerySelection.size; const busy = state.galleryBusy;
   document.querySelector('#gallery-selection-count').textContent = count ? `${count} selected` : 'Select photos';
   const all = document.querySelector('#gallery-select-all'); all.checked = !!items.length && count === items.length; all.indeterminate = count > 0 && count < items.length; all.disabled = busy || !items.length;
   document.querySelectorAll('#gallery-grid .gallery-photo-check').forEach(input => { input.checked = state.gallerySelection.has(input.value); input.disabled = busy; input.closest('.gallery-photo').classList.toggle('selected', input.checked); });
-  document.querySelectorAll('.gallery-page .gallery-icon').forEach(button => { button.disabled = busy; });
+  document.querySelectorAll('.gallery-page .gallery-icon,#gallery-grid .gallery-photo-hit').forEach(button => { button.disabled = busy; });
   document.querySelector('#gallery-album').disabled = busy;
   ['edit', 'albums', 'remove'].forEach(action => { document.querySelector(`#gallery-${action}`).disabled = busy || !count; });
   for (const [action, direction] of [['up', -1], ['down', 1]]) {
@@ -631,15 +632,23 @@ function renderGallery() {
   const filter = document.querySelector('#gallery-album'); const selected = filter.value;
   const albums = [...new Set(state.gallery.items.flatMap(item => item.albums || []))].sort();
   filter.innerHTML = '<option value="">All photographs</option>' + albums.map(album => `<option value="${esc(album)}">${esc(album)}</option>`).join(''); filter.value = albums.includes(selected) ? selected : '';
-  if (filter.value !== selected) state.gallerySelection.clear();
+  if (filter.value !== selected) { state.gallerySelection.clear(); state.gallerySelectionAnchor = null; }
   document.querySelector('#gallery-grid').innerHTML = visibleGalleryItems().map(item => {
     const media = state.media.find(media => media.id === item.mediaId);
-    return `<article class="image-card gallery-photo"><label class="gallery-photo-hit"><img src="${esc(safeImageUrl(media || { url: '' }))}" alt="${esc(item.title || 'Untitled')}" loading="lazy" draggable="false">
-      <input class="gallery-photo-check" type="checkbox" value="${esc(item.mediaId)}" aria-label="Select ${esc(item.title || 'Untitled')}">
-      <span class="gallery-photo-details"><strong>${esc(item.title || 'Untitled')}</strong>${[item.location, item.date?.slice(0, 10), (item.albums || []).join(' · ')].filter(Boolean).map(detail => `<small>${esc(detail)}</small>`).join('')}</span></label></article>`;
+    return `<article class="image-card gallery-photo"><button class="gallery-photo-hit" type="button" data-gallery-edit="${esc(item.mediaId)}" aria-label="Edit ${esc(item.title || 'Untitled')} attributes"><img src="${esc(safeImageUrl(media || { url: '' }))}" alt="${esc(item.title || 'Untitled')}" loading="lazy" draggable="false">
+      <span class="gallery-photo-details"><strong>${esc(item.title || 'Untitled')}</strong>${[item.location, item.date?.slice(0, 10), (item.albums || []).join(' · ')].filter(Boolean).map(detail => `<small>${esc(detail)}</small>`).join('')}</span></button>
+      <input class="gallery-photo-check" type="checkbox" value="${esc(item.mediaId)}" aria-label="Select ${esc(item.title || 'Untitled')}" title="Shift-click to select a range"></article>`;
   }).join('') || '<div class="empty">Upload photos or choose from your library to begin.</div>';
-  document.querySelectorAll('#gallery-grid .gallery-photo-check').forEach(input => input.addEventListener('change', () => {
-    if (input.checked) state.gallerySelection.add(input.value); else state.gallerySelection.delete(input.value); updateGalleryToolbar();
+  document.querySelectorAll('#gallery-grid .gallery-photo-check').forEach(input => input.addEventListener('click', event => {
+    const items = visibleGalleryItems(); const anchor = items.findIndex(item => item.mediaId === state.gallerySelectionAnchor);
+    const index = items.findIndex(item => item.mediaId === input.value); const checked = input.checked;
+    const range = event.shiftKey && anchor >= 0 ? items.slice(Math.min(anchor, index), Math.max(anchor, index) + 1) : [items[index]];
+    range.forEach(item => { if (checked) state.gallerySelection.add(item.mediaId); else state.gallerySelection.delete(item.mediaId); });
+    if (!event.shiftKey || anchor < 0) state.gallerySelectionAnchor = input.value;
+    updateGalleryToolbar();
+  }));
+  document.querySelectorAll('#gallery-grid [data-gallery-edit]').forEach(button => button.addEventListener('click', () => {
+    if (!state.galleryBusy) editGalleryItem(state.gallery.items.findIndex(item => item.mediaId === button.dataset.galleryEdit));
   }));
   updateGalleryStatus(); updateGalleryToolbar();
 }

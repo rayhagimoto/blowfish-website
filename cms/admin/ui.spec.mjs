@@ -257,7 +257,7 @@ test('gallery batch edits change only opted-in fields and removal keeps library 
   await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
   const edit = page.getByRole('button', { name: 'Edit selected photographs', exact: true }); const remove = page.getByRole('button', { name: 'Remove selected photographs from gallery', exact: true });
   await expect(edit).toBeDisabled(); await expect(remove).toBeDisabled();
-  await expect(page.locator('#gallery-grid button')).toHaveCount(0);
+  await expect(page.locator('#gallery-grid .gallery-icon')).toHaveCount(0);
   await page.getByRole('checkbox', { name: 'Select all visible photographs', exact: true }).check();
   await expect(page.locator('#gallery-selection-count')).toHaveText('2 selected');
   await edit.click(); await expect(page.getByLabel('Title', { exact: true })).toBeDisabled();
@@ -332,7 +332,9 @@ test('photo grid reveals details on hover and keeps icon actions and mobile phot
   await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click(); await page.mouse.move(0, 0);
   const cards = page.locator('#gallery-grid .gallery-photo'); const details = cards.first().locator('.gallery-photo-details');
   await expect(details).toHaveCSS('opacity', '0'); await cards.first().hover(); await expect(details).toHaveCSS('opacity', '1');
-  await cards.first().click(); await expect(cards.first().getByRole('checkbox')).toBeChecked(); await expect(page.getByRole('dialog')).not.toBeVisible();
+  await cards.first().locator('img').click(); await expect(cards.first().getByRole('checkbox')).not.toBeChecked();
+  await expect(page.getByRole('dialog')).toBeVisible(); await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Chicago Loop');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click(); await cards.first().getByRole('checkbox').check();
   await page.getByRole('checkbox', { name: 'Select Roosevelt Rd', exact: true }).check(); await page.mouse.move(0, 0);
   await expect(details).toHaveCSS('opacity', '0'); await expect(page.locator('#gallery-edit svg')).toBeVisible(); await expect(page.locator('#gallery-edit')).toHaveCSS('border-top-width', '0px');
   await expect.poll(() => cards.locator('img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0))).toBe(true);
@@ -351,10 +353,72 @@ test.describe('touch gallery', () => {
   test('selection reveals photo details and single removal leaves other images intact', async ({ page }) => {
     const data = fixture(); await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).tap();
     const card = page.locator('#gallery-grid .gallery-photo').first();
-    await expect(card.locator('.gallery-photo-details')).toHaveCSS('opacity', '0'); await card.tap();
+    await expect(card.locator('.gallery-photo-details')).toHaveCSS('opacity', '0'); await card.locator('img').tap();
+    await expect(page.getByRole('dialog')).toBeVisible(); await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Alpine light');
+    await expect(card.getByRole('checkbox')).not.toBeChecked(); await page.getByRole('button', { name: 'Close dialog', exact: true }).tap();
+    await card.getByRole('checkbox').tap(); await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(card.getByRole('checkbox')).toBeChecked(); await expect(card.locator('.gallery-photo-details')).toHaveCSS('opacity', '1');
     await page.getByRole('button', { name: 'Remove selected photographs from gallery', exact: true }).tap();
     await expect(page.locator('#gallery-grid .gallery-photo')).toHaveCount(1); await expect(page.locator('#gallery-grid')).toContainText('Blue hour');
     await page.getByRole('button', { name: 'Save draft', exact: true }).tap(); expect(data.writes.at(-1).items.map(item => item.mediaId)).toEqual(['image-two']);
   });
+});
+
+function rangeGalleryFixture() {
+  const data = fixture();
+  data.media = Array.from({ length: 9 }, (_, index) => ({ id: `range-${index + 1}`, filename: `Photo ${index + 1}.jpg`, url: `/media/range-${index + 1}.webp` }));
+  data.gallery.items = data.media.map((media, index) => ({ mediaId: media.id, title: `Photo ${index + 1}`, description: '', location: '', date: '', albums: (index + 1) % 2 === 0 ? ['Even'] : [], metadata: {} }));
+  return data;
+}
+
+async function selectedGalleryIds(page) {
+  return page.locator('#gallery-grid .gallery-photo-check:checked').evaluateAll(inputs => inputs.map(input => input.value));
+}
+
+test('image and keyboard clicks edit only that photograph while preserving checkbox selection', async ({ page }) => {
+  const data = fixture(); await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Select Alpine light', exact: true }).check();
+  await page.getByRole('img', { name: 'Blue hour', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Photograph details', exact: true })).toBeVisible(); await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Blue hour');
+  expect(await selectedGalleryIds(page)).toEqual(['image-one']);
+  await page.getByLabel('Title', { exact: true }).fill('Nightfall'); await page.getByRole('button', { name: 'Apply details', exact: true }).click();
+  await expect(page.locator('#gallery-selection-count')).toHaveText('1 selected'); await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  expect(data.writes.at(-1).items.map(item => item.title)).toEqual(['Alpine light', 'Nightfall']);
+  await page.getByRole('button', { name: 'Edit Nightfall attributes', exact: true }).focus(); await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Nightfall'); expect(await selectedGalleryIds(page)).toEqual(['image-one']);
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.getByRole('img', { name: 'Alpine light', exact: true }).click({ modifiers: ['Shift'] });
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Alpine light'); expect(await selectedGalleryIds(page)).toEqual(['image-one']);
+});
+
+test('shift-click checkbox ranges follow row order in both directions and preserve other selections', async ({ page }) => {
+  const data = rangeGalleryFixture(); await mock(page, data); await page.setViewportSize({ width: 900, height: 1000 }); await page.goto('/admin/');
+  await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  const boxes = page.locator('#gallery-grid .gallery-photo-check'); const cards = page.locator('#gallery-grid .gallery-photo');
+  const first = await cards.nth(0).boundingBox(), third = await cards.nth(2).boundingBox(), fourth = await cards.nth(3).boundingBox();
+  expect(first.y).toBe(third.y); expect(fourth.y).toBeGreaterThan(third.y); expect(fourth.x).toBe(first.x);
+  await boxes.nth(8).check(); await boxes.nth(1).check(); await boxes.nth(6).click({ modifiers: ['Shift'] });
+  expect(await selectedGalleryIds(page)).toEqual(['range-2', 'range-3', 'range-4', 'range-5', 'range-6', 'range-7', 'range-9']);
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const all = page.getByRole('checkbox', { name: 'Select all visible photographs', exact: true }); await all.check(); await all.uncheck();
+  await boxes.nth(6).check(); await boxes.nth(2).click({ modifiers: ['Shift'] });
+  expect(await selectedGalleryIds(page)).toEqual(['range-3', 'range-4', 'range-5', 'range-6', 'range-7']);
+  await boxes.nth(5).click({ modifiers: ['Shift'] }); expect(await selectedGalleryIds(page)).toEqual(['range-3', 'range-4', 'range-5']);
+  await page.getByLabel('Album', { exact: true }).selectOption('Even');
+  await page.getByRole('checkbox', { name: 'Select Photo 4', exact: true }).click({ modifiers: ['Shift'] }); expect(await selectedGalleryIds(page)).toEqual(['range-4']);
+  await page.getByRole('checkbox', { name: 'Select Photo 2', exact: true }).check(); await page.getByRole('checkbox', { name: 'Select Photo 8', exact: true }).click({ modifiers: ['Shift'] });
+  expect(await selectedGalleryIds(page)).toEqual(['range-2', 'range-4', 'range-6', 'range-8']);
+  await page.getByRole('button', { name: 'Remove selected photographs from gallery', exact: true }).click(); await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  expect(data.writes.at(-1).items.map(item => item.mediaId)).toEqual(['range-1', 'range-3', 'range-5', 'range-7', 'range-9']);
+});
+
+test('range anchor follows the selected photo after reordering and keyboard checkbox clicks work', async ({ page }) => {
+  const data = rangeGalleryFixture(); await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  const anchor = page.getByRole('checkbox', { name: 'Select Photo 5', exact: true }); await anchor.focus(); await page.keyboard.press('Space');
+  await expect(anchor).toBeChecked(); await page.getByRole('button', { name: 'Move selected photographs up', exact: true }).click();
+  const endpoint = page.getByRole('checkbox', { name: 'Select Photo 2', exact: true }); await endpoint.focus(); await page.keyboard.press('Shift+Space');
+  expect(await selectedGalleryIds(page)).toEqual(['range-2', 'range-3', 'range-5']); await expect(page.getByRole('dialog')).not.toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('checkbox', { name: 'Select Photo 7', exact: true }).click({ modifiers: ['Shift'] });
+  expect(await selectedGalleryIds(page)).toEqual(['range-2', 'range-3', 'range-5', 'range-4', 'range-6', 'range-7']);
 });
