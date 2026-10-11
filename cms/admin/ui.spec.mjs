@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { suppliedPhotoMetadata } from '../photo-metadata.mjs';
 
 const owner = { id: 'owner', name: 'Ray Hagimoto', email: 'rayhagimoto@gmail.com', twoFactorEnabled: true };
 function fixture() {
@@ -30,7 +31,10 @@ async function mock(page, data) {
     if (path === '/api/cms/preview') return send({ html: data.preview });
     if (path === '/api/cms/media' && request.method() === 'POST') {
       data.uploads.push(request.postData()); const preserved = request.postData().match(/name="metadata"\r\n\r\n([^\r]*)/);
-      const media = { id: `uploaded-${data.uploads.length}`, filename: 'clipboard.webp', url: `/media/uploaded-${data.uploads.length}.webp`, width: 100, height: 100, size: 1024, metadata: preserved ? JSON.parse(preserved[1]) : data.uploadMetadata || {} };
+      let metadata;
+      try { metadata = preserved ? suppliedPhotoMetadata(preserved[1]) : data.uploadMetadata || {}; }
+      catch { return send({ error: { code: 'INVALID_METADATA', message: 'The photo metadata could not be read.' } }, 400); }
+      const media = { id: `uploaded-${data.uploads.length}`, filename: 'clipboard.webp', url: `/media/uploaded-${data.uploads.length}.webp`, width: 100, height: 100, size: 1024, metadata };
       data.media.push(media); return send({ media });
     }
     if (path === '/api/cms/media') return send({ media: data.media });
@@ -184,7 +188,7 @@ test('large gallery uploads preserve camera metadata before browser compression'
   await page.getByRole('button', { name: 'Edit selected photographs', exact: true }).click();
   await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-02-23');
   const metadata = JSON.parse(await page.locator('#gallery-details textarea[name="metadata"]').inputValue());
-  expect(metadata).toMatchObject({ camera: 'ILCE-7M3', lens: '24-70mm F2.8 DG DN | Art 019', iso: 100, shutter_speed: '1/6 s', aperture: 'f/2.8', focal_length: '70 mm' });
+  expect(metadata).toMatchObject({ camera: 'ILCE-7M3', lens: '24-70mm F2.8 DG DN | Art 019', iso: 100, shutter_speed: '1/6 s', aperture: 'f/2.8', focal_length: '70 mm', focal_length_35mm: 70 });
   await page.getByRole('button', { name: 'Apply details', exact: true }).click();
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   expect(data.writes.at(-1).items.at(-1)).toMatchObject({ date: '2026-02-23', metadata });

@@ -8,6 +8,7 @@ import { createAuth, handleAuth, requireOwner, authRouteAllowed } from '../../cm
 import { renderMarkdown } from '../../cms/markdown.mjs';
 import { createHandler } from '../../cms/api.mjs';
 import { uploadImage, readImage } from '../../cms/media.mjs';
+import { extractPhotoMetadata } from '../../cms/photo-metadata.mjs';
 import sharp from 'sharp';
 import { crc32, deflateSync } from 'node:zlib';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
@@ -363,8 +364,11 @@ test('image upload validates decoded content, converts safely, strips metadata a
 });
 
 test('browser-compressed uploads persist extracted details and reject unbounded metadata', async () => {
-  const bytes = await sharp({ create: { width: 20, height: 10, channels: 3, background: 'red' } }).webp().toBuffer();
-  const metadata = { camera: 'Original camera', location: 'Kyoto, Japan', date: '2026-02-23', iso: 400 };
+  const original = await sharp({ create: { width: 20, height: 10, channels: 3, background: 'red' } })
+    .withExif({ IFD0: { Model: 'Original camera' }, IFD2: { DateTimeOriginal: '2026:02:23 18:27:34', ISOSpeedRatings: '400', FocalLengthIn35mmFilm: '51' } }).jpeg().toBuffer();
+  const metadata = { ...await extractPhotoMetadata(original), location: 'Kyoto, Japan' };
+  assert.equal(metadata.focal_length_35mm, 51);
+  const bytes = await sharp(original).webp().toBuffer();
   const fixture = uploadFixture();
   const media = await uploadImage(uploadRequest(bytes, { type: 'image/webp', metadata: JSON.stringify(metadata) }), fixture);
   assert.deepEqual(media.metadata, metadata);

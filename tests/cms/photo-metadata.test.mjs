@@ -6,7 +6,7 @@ import { extractPhotoMetadata, photoMetadata, suppliedPhotoMetadata } from '../.
 const exif = {
   IFD0: { Make: 'SONY', Model: 'ILCE-7M3' },
   IFD2: { DateTimeOriginal: '2026:02:23 23:58:30', OffsetTimeOriginal: '-06:00',
-    ExposureTime: '1/200', FNumber: '28/10', ISOSpeedRatings: '400', FocalLength: '70/1',
+    ExposureTime: '1/200', FNumber: '28/10', ISOSpeedRatings: '400', FocalLength: '70/1', FocalLengthIn35mmFilm: '70',
     LensModel: '24-70mm F2.8', ExposureProgram: '1', WhiteBalance: '0', ExposureBiasValue: '-1/3' },
   IFD3: { GPSLatitudeRef: 'N', GPSLatitude: '41/1 53/1 0/1', GPSLongitudeRef: 'W', GPSLongitude: '87/1 38/1 0/1' },
 };
@@ -22,6 +22,8 @@ test('JPEG, PNG and WebP retain camera settings, capture date and GPS before con
       assert.equal(metadata.camera_make, 'SONY'); assert.equal(metadata.lens, '24-70mm F2.8');
       assert.equal(metadata.iso, 400); assert.equal(metadata.shutter_speed, '1/200 s');
       assert.equal(metadata.aperture, 'f/2.8'); assert.equal(metadata.focal_length, '70 mm');
+      assert.equal(metadata.focal_length_35mm, 70);
+      assert.deepEqual(suppliedPhotoMetadata(JSON.stringify(metadata)), metadata, `${format} metadata must survive browser-to-server transport`);
       assert.equal(metadata.exposure_program, 'Manual'); assert.equal(metadata.white_balance, 'Auto');
       assert.ok(Math.abs(metadata.exposure_compensation + 1 / 3) < 0.00001);
       assert.equal(metadata.date, '2026-02-23'); assert.equal(metadata.captured_at, '2026-02-23T23:58:30');
@@ -65,5 +67,5 @@ test('missing or malformed metadata does not invent dates, locations, or setting
 
 test('browser-preserved metadata is bounded and accepts only flat descriptive values', () => {
   assert.deepEqual(suppliedPhotoMetadata('{"camera":"Sony","iso":400}'), { camera: 'Sony', iso: 400 });
-  for (const invalid of ['null', '[]', '{"camera":{"nested":"value"}}', '{"camera":true}', '{"camera":"' + 'a'.repeat(241) + '"}', 'bad JSON', '{"__proto__":{"bad":1}}']) assert.throws(() => suppliedPhotoMetadata(invalid));
+  for (const invalid of ['null', '[]', '{"camera":{"nested":"value"}}', '{"camera":true}', '{"camera-model":"Sony"}', '{"camera":"' + 'a'.repeat(241) + '"}', 'bad JSON', '{"__proto__":{"bad":1}}']) assert.throws(() => suppliedPhotoMetadata(invalid));
 });

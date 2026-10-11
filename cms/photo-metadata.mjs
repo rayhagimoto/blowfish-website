@@ -86,7 +86,7 @@ export function suppliedPhotoMetadata(value) {
   if (typeof value !== 'string' || value.length > 16384) throw new Error('Invalid photo metadata');
   const metadata = JSON.parse(value);
   if (!metadata || Array.isArray(metadata) || typeof metadata !== 'object' || Object.keys(metadata).length > 100 ||
-    Object.entries(metadata).some(([key, item]) => !/^[a-z_]{1,80}$/.test(key) ||
+    Object.entries(metadata).some(([key, item]) => !/^[a-z0-9_]{1,80}$/.test(key) ||
       !(typeof item === 'string' && item.length <= 240 || typeof item === 'number' && Number.isFinite(item)))) throw new Error('Invalid photo metadata');
   return metadata;
 }
