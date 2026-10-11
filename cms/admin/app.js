@@ -9,7 +9,7 @@ import './app.css';
 const OWNER = 'rayhagimoto@gmail.com';
 const app = document.querySelector('#app');
 const modal = document.querySelector('#modal');
-const state = { user: null, tab: 'posts', posts: [], media: [], gallery: null, editor: null, post: null,
+const state = { user: null, tab: 'posts', posts: [], media: [], gallery: null, gallerySelection: new Set(), galleryBusy: false, editor: null, post: null,
   dirty: false, savePromise: null, saveTimer: null, conflict: false, editVersion: 0, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light', font: 'mono', mode: 'ir', uploads: 0, editorReady: false, editorMarkdown: '', navigating: false };
 window.addEventListener('appearancechange', () => setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light'));
 const setupToken = new URLSearchParams(location.hash.slice(1)).get('setup') || '';
@@ -183,7 +183,8 @@ function setTheme(theme) {
   document.querySelector('#safe-preview-frame')?.contentDocument?.documentElement.classList.toggle('dark', theme === 'dark');
 }
 function openDialog(title, content) {
-  modal.innerHTML = `<h2 id="modal-title">${title}</h2><button class="quiet modal-close" type="button" aria-label="Close dialog">×</button>${content}`;
+  modal.classList.toggle('gallery-dialog', state.tab === 'gallery');
+  modal.innerHTML = `<h2 id="modal-title">${title}</h2><button class="quiet modal-close" type="button" aria-label="Close dialog">${state.tab === 'gallery' ? galleryIcon('close') : '×'}</button>${content}`;
   modal.querySelector('.modal-close').addEventListener('click', () => modal.close()); modal.showModal(); return modal;
 }
 async function confirmAction(title, message, label = 'Confirm') {
@@ -196,6 +197,7 @@ async function confirmAction(title, message, label = 'Confirm') {
   });
 }
 async function leaveDirtyView() {
+  if (state.tab === 'gallery' && state.galleryBusy) { notice('Wait for the gallery action to finish before leaving.', true); return false; }
   if (state.uploads) { notice('Wait for the image upload to finish before leaving.', true); return false; }
   if (state.tab === 'editor' && state.dirty && !state.conflict) {
     try { await savePost(); } catch { /* The confirmation below keeps failed saves visible. */ }
@@ -493,13 +495,75 @@ function renderMedia() {
     } catch (error) { notice(error.message, true); }
   }));
 }
+function galleryIcon(name) {
+  const paths = {
+    upload: '<path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/>',
+    library: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-6 5 7"/>',
+    save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"/><path d="M7 3v6h10V3M7 21v-8h10v8"/>',
+    publish: '<path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/>',
+    edit: '<path d="m16 3 5 5-12 12-6 1 1-6L16 3Zm-3 3 5 5"/>',
+    albums: '<path d="M3 7V5a2 2 0 0 1 2-2h4l3 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M8 13h8m-4-4v8"/>',
+    up: '<path d="m6 10 6-6 6 6M12 4v16"/>', down: '<path d="m6 14 6 6 6-6M12 4v16"/>',
+    trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
+    close: '<path d="m6 6 12 12M6 18 18 6"/>',
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
+}
+function galleryButton(id, icon, label, extra = '') {
+  return `<button id="${id}" class="gallery-icon ${extra}" type="button" aria-label="${label}" title="${label}">${galleryIcon(icon)}</button>`;
+}
+function bindGalleryAction(selector, handler) {
+  document.querySelector(selector).addEventListener('click', async () => {
+    if (state.galleryBusy) return;
+    state.galleryBusy = true; updateGalleryToolbar();
+    try { await handler(); } catch (error) { notice(error.message, true); }
+    finally { state.galleryBusy = false; updateGalleryToolbar(); }
+  });
+}
 async function galleryView() {
   const [result, media] = await Promise.all([api('/gallery'), api('/media')]); state.gallery = result.gallery; state.media = media.media;
-  document.querySelector('#content').innerHTML = heading('Curate the gallery.', 'Give each photograph its place. Save a draft, then publish when ready.',
-    '<button id="gallery-add">Add images</button><button id="gallery-save">Save draft</button><button id="gallery-publish" class="primary">Publish gallery</button>') +
-    `<div id="gallery-conflict" class="conflict" hidden><p>A newer gallery draft exists. Download your local gallery details before reloading the server version.</p><div class="actions"><button id="download-gallery">Download my gallery</button><button id="reload-gallery">Reload server version</button></div></div><div class="filter-row"><label class="field">Album<select id="gallery-album" aria-label="Album"><option value="">All photographs</option></select></label><span id="gallery-status" class="save-status" role="status">Saved</span></div><p class="muted" style="font-size:.8rem">Drag cards to reorder, or use their up and down buttons. Order controls are available when viewing all photographs.</p><div id="gallery-grid" class="gallery-grid"></div>`;
-  renderGallery(); bindAction('#gallery-add', () => galleryAddDialog()); bindAction('#gallery-save', saveGallery); bindAction('#gallery-publish', publishGallery);
-  document.querySelector('#gallery-album').addEventListener('change', renderGallery);
+  state.gallerySelection.clear();
+  document.querySelector('#content').innerHTML = `<section class="gallery-page" id="gallery-workspace">` +
+    heading('Curate the gallery.', 'Select photos, then choose an action.',
+      galleryButton('gallery-upload', 'upload', 'Upload photos') + galleryButton('gallery-library', 'library', 'Choose library photos') +
+      galleryButton('gallery-save', 'save', 'Save draft') + galleryButton('gallery-publish', 'publish', 'Publish gallery', 'gallery-publish')) +
+    `<input class="file-input" id="gallery-files" type="file" accept="image/jpeg,image/png,image/webp" multiple tabindex="-1" aria-label="Upload photo files">
+    <div id="gallery-conflict" class="conflict" hidden><p>A newer gallery draft exists. Download your local gallery details before reloading the server version.</p><div class="actions"><button id="download-gallery">Download my gallery</button><button id="reload-gallery">Reload server version</button></div></div>
+    <div class="gallery-toolbar" role="group" aria-label="Gallery actions">
+      <label class="gallery-select-all"><input id="gallery-select-all" type="checkbox" aria-label="Select all visible photographs"><span id="gallery-selection-count" aria-live="polite">Select photos</span></label>
+      <div class="gallery-selection-actions">${galleryButton('gallery-edit', 'edit', 'Edit selected photographs')}${galleryButton('gallery-albums', 'albums', 'Change albums for selected photographs')}${galleryButton('gallery-up', 'up', 'Move selected photographs up')}${galleryButton('gallery-down', 'down', 'Move selected photographs down')}${galleryButton('gallery-remove', 'trash', 'Remove selected photographs from gallery', 'danger')}</div>
+      <label class="gallery-filter"><span class="sr-only">Album</span><select id="gallery-album" aria-label="Album"><option value="">All photographs</option></select></label>
+    </div>
+    <div class="gallery-info"><p class="muted">Drop photos here or use the upload icon. Albums are optional.</p><span id="gallery-status" class="save-status" role="status"></span></div>
+    <p id="gallery-upload-status" class="muted" role="status" hidden></p>
+    <div id="gallery-grid" class="gallery-grid"></div><div class="gallery-drop-overlay" aria-hidden="true">Drop photographs to upload</div></section>`;
+  renderGallery();
+  bindGalleryAction('#gallery-upload', () => document.querySelector('#gallery-files').click());
+  bindGalleryAction('#gallery-library', galleryLibraryDialog);
+  bindGalleryAction('#gallery-save', saveGallery); bindGalleryAction('#gallery-publish', publishGallery);
+  bindGalleryAction('#gallery-edit', editGallerySelection); bindGalleryAction('#gallery-albums', galleryAlbumsDialog);
+  bindGalleryAction('#gallery-up', () => moveGallerySelection(-1)); bindGalleryAction('#gallery-down', () => moveGallerySelection(1));
+  bindGalleryAction('#gallery-remove', () => {
+    const count = state.gallerySelection.size;
+    state.gallery.items = state.gallery.items.filter(item => !state.gallerySelection.has(item.mediaId)); state.gallerySelection.clear();
+    galleryChanged(); renderGallery(); notice(`${count} ${count === 1 ? 'photograph removed' : 'photographs removed'} from the gallery draft. Library originals are kept.`);
+  });
+  document.querySelector('#gallery-album').addEventListener('change', () => { state.gallerySelection.clear(); renderGallery(); });
+  document.querySelector('#gallery-select-all').addEventListener('change', event => {
+    state.gallerySelection = new Set(event.target.checked ? visibleGalleryItems().map(item => item.mediaId) : []); updateGalleryToolbar();
+  });
+  document.querySelector('#gallery-files').addEventListener('change', async event => {
+    await galleryUploadFiles([...event.target.files]); event.target.value = '';
+  });
+  const workspace = document.querySelector('#gallery-workspace'); let dragDepth = 0;
+  const filesDragged = event => [...event.dataTransfer.types].includes('Files');
+  workspace.addEventListener('dragenter', event => { if (filesDragged(event)) { event.preventDefault(); dragDepth++; workspace.classList.add('drag-over'); } });
+  workspace.addEventListener('dragover', event => { if (filesDragged(event)) { event.preventDefault(); event.dataTransfer.dropEffect = state.galleryBusy ? 'none' : 'copy'; } });
+  workspace.addEventListener('dragleave', event => { if (filesDragged(event) && --dragDepth <= 0) { dragDepth = 0; workspace.classList.remove('drag-over'); } });
+  workspace.addEventListener('drop', event => {
+    if (!filesDragged(event)) return;
+    event.preventDefault(); dragDepth = 0; workspace.classList.remove('drag-over'); galleryUploadFiles([...event.dataTransfer.files]);
+  });
   bindAction('#download-gallery', () => download('gallery-draft.json', JSON.stringify(state.gallery, null, 2)));
   bindAction('#reload-gallery', async () => { if (await confirmAction('Reload the server gallery?', 'Download your draft first. Unsaved local changes will be discarded.', 'Reload')) { state.dirty = false; state.conflict = false; await galleryView(); } });
 }
@@ -512,48 +576,111 @@ function addGalleryMedia(media) {
   if (state.gallery.items.some(item => item.mediaId === media.id)) { notice('This photograph is already in the gallery.'); return; }
   const metadata = structuredClone(media.metadata || {});
   state.gallery.items.push({ mediaId: media.id, title: markdownLabel(media.filename), description: '', location: metadata.location || '', date: metadata.date || '', albums: [], metadata });
-  galleryChanged(); renderGallery();
+  galleryChanged(); renderGallery(); return media.id;
 }
-async function galleryAddDialog() {
-  openDialog('Add photographs', `<p class="muted">Choose from your library, or upload new images.</p><div class="actions"><button id="gallery-library">Choose library image</button><button id="gallery-upload">Upload images</button><input class="file-input" id="gallery-files" type="file" accept="image/jpeg,image/png,image/webp" multiple></div><p id="gallery-upload-status" class="muted" role="status" style="margin-top:1rem"></p>`);
-  bindAction('#gallery-library', async () => { modal.close(); await mediaPicker(addGalleryMedia, 'Add a photograph'); }, modal);
-  bindAction('#gallery-upload', () => modal.querySelector('#gallery-files').click(), modal);
-  modal.querySelector('#gallery-files').addEventListener('change', async event => {
-    const status = modal.querySelector('#gallery-upload-status'); const files = [...event.target.files];
+async function galleryUploadFiles(files) {
+  if (!files.length) return;
+  if (state.galleryBusy) { notice('Wait for the current gallery action to finish.', true); return; }
+  state.galleryBusy = true; state.uploads++; state.gallerySelection.clear(); document.querySelector('#gallery-album').value = '';
+  const status = document.querySelector('#gallery-upload-status'); status.hidden = false; updateGalleryToolbar(); let added = 0; const failures = [];
+  try {
     for (let index = 0; index < files.length; index++) {
       status.textContent = `Uploading ${index + 1} of ${files.length}…`;
-      try { const media = await uploadImage(files[index]); state.media.unshift(media); addGalleryMedia(media); }
-      catch (error) { notice(error.message, true); }
+      try {
+        const media = await uploadImage(files[index]); state.media.unshift(media);
+        const id = addGalleryMedia(media); if (id) { state.gallerySelection.add(id); added++; }
+      } catch (error) { failures.push(`${files[index].name}: ${error.message}`); }
     }
-    status.textContent = 'Uploads added to the gallery draft. Save and publish when ready.'; event.target.value = '';
-  });
+    status.textContent = `${added} ${added === 1 ? 'photograph added' : 'photographs added'} to the gallery draft. Select an action to edit details or add albums.`;
+    if (failures.length) { status.textContent += ` ${failures.length} upload(s) failed.`; notice(failures.join(' '), true); }
+  } finally { state.uploads--; state.galleryBusy = false; renderGallery(); }
+}
+async function galleryLibraryDialog() {
+  state.media = (await api('/media')).media;
+  const available = state.media.filter(media => !state.gallery.items.some(item => item.mediaId === media.id));
+  openDialog('Choose library photos', `<p class="muted">Select photographs to add to your gallery draft. Albums are optional.</p><div class="media-grid gallery-library-grid">${available.map(media =>
+    `<label class="image-card gallery-photo"><img src="${esc(safeImageUrl(media))}" alt="${esc(media.filename)}" loading="lazy" draggable="false"><input type="checkbox" class="gallery-photo-check" name="library-photo" value="${esc(media.id)}" aria-label="Select ${esc(media.filename)}"><span class="gallery-photo-details"><strong>${esc(media.filename)}</strong></span></label>`).join('') || '<p class="muted">All library photographs are already in your gallery.</p>'}</div><div class="actions"><button id="gallery-library-add" class="primary" disabled>Add selected photographs</button></div>`);
+  const selected = () => [...modal.querySelectorAll('[name=library-photo]:checked')].map(input => input.value);
+  modal.querySelectorAll('[name=library-photo]').forEach(input => input.addEventListener('change', () => { modal.querySelector('#gallery-library-add').disabled = !selected().length; }));
+  bindAction('#gallery-library-add', () => {
+    const ids = selected(); document.querySelector('#gallery-album').value = ''; state.gallerySelection.clear();
+    ids.forEach(id => { if (addGalleryMedia(state.media.find(media => media.id === id))) state.gallerySelection.add(id); });
+    modal.close(); renderGallery();
+  }, modal);
+}
+function visibleGalleryItems() {
+  const album = document.querySelector('#gallery-album').value;
+  return state.gallery.items.filter(item => !album || item.albums?.includes(album));
+}
+function updateGalleryToolbar() {
+  const items = visibleGalleryItems(); const visible = new Set(items.map(item => item.mediaId));
+  state.gallerySelection.forEach(id => { if (!visible.has(id)) state.gallerySelection.delete(id); });
+  const count = state.gallerySelection.size; const busy = state.galleryBusy;
+  document.querySelector('#gallery-selection-count').textContent = count ? `${count} selected` : 'Select photos';
+  const all = document.querySelector('#gallery-select-all'); all.checked = !!items.length && count === items.length; all.indeterminate = count > 0 && count < items.length; all.disabled = busy || !items.length;
+  document.querySelectorAll('#gallery-grid .gallery-photo-check').forEach(input => { input.checked = state.gallerySelection.has(input.value); input.disabled = busy; input.closest('.gallery-photo').classList.toggle('selected', input.checked); });
+  document.querySelectorAll('.gallery-page .gallery-icon').forEach(button => { button.disabled = busy; });
+  document.querySelector('#gallery-album').disabled = busy;
+  ['edit', 'albums', 'remove'].forEach(action => { document.querySelector(`#gallery-${action}`).disabled = busy || !count; });
+  for (const [action, direction] of [['up', -1], ['down', 1]]) {
+    const movable = state.gallery.items.some((item, index, list) => state.gallerySelection.has(item.mediaId) && list[index + direction] && !state.gallerySelection.has(list[index + direction].mediaId));
+    document.querySelector(`#gallery-${action}`).disabled = busy || !!document.querySelector('#gallery-album').value || !movable;
+  }
 }
 function renderGallery() {
   const filter = document.querySelector('#gallery-album'); const selected = filter.value;
   const albums = [...new Set(state.gallery.items.flatMap(item => item.albums || []))].sort();
   filter.innerHTML = '<option value="">All photographs</option>' + albums.map(album => `<option value="${esc(album)}">${esc(album)}</option>`).join(''); filter.value = albums.includes(selected) ? selected : '';
-  const items = state.gallery.items.map((item, index) => ({ ...item, index })).filter(item => !filter.value || item.albums?.includes(filter.value));
-  document.querySelector('#gallery-grid').innerHTML = items.map(item => {
+  if (filter.value !== selected) state.gallerySelection.clear();
+  document.querySelector('#gallery-grid').innerHTML = visibleGalleryItems().map(item => {
     const media = state.media.find(media => media.id === item.mediaId);
-    return imageCard(media || { filename: 'Unavailable image', url: '' }, `<h3>${esc(item.title || 'Untitled')}</h3><small>${esc(item.location || '')}</small><small>${esc((item.albums || []).join(' · '))}</small>
-      <div class="actions"><button data-gallery-edit="${item.index}">Edit details</button><button data-gallery-move="${item.index}" data-direction="-1" aria-label="Move ${esc(item.title)} up" ${item.index === 0 || filter.value ? 'disabled' : ''}>↑</button><button data-gallery-move="${item.index}" data-direction="1" aria-label="Move ${esc(item.title)} down" ${item.index === state.gallery.items.length - 1 || filter.value ? 'disabled' : ''}>↓</button><button class="danger" data-gallery-remove="${item.index}">Remove</button></div>`, `data-gallery-index="${item.index}" draggable="${!filter.value}"`);
-  }).join('') || '<div class="empty">Add photographs to begin your gallery.</div>';
-  updateGalleryStatus();
-  document.querySelectorAll('[data-gallery-edit]').forEach(button => button.addEventListener('click', () => editGalleryItem(Number(button.dataset.galleryEdit))));
-  document.querySelectorAll('[data-gallery-move]').forEach(button => button.addEventListener('click', () => moveGalleryItem(Number(button.dataset.galleryMove), Number(button.dataset.galleryMove) + Number(button.dataset.direction))));
-  document.querySelectorAll('[data-gallery-remove]').forEach(button => button.addEventListener('click', () => { state.gallery.items.splice(Number(button.dataset.galleryRemove), 1); galleryChanged(); renderGallery(); }));
-  let dragged;
-  document.querySelectorAll('[data-gallery-index]').forEach(card => {
-    card.addEventListener('dragstart', event => { dragged = Number(card.dataset.galleryIndex); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', String(dragged)); });
-    card.addEventListener('dragover', event => { if (dragged !== undefined && !filter.value) { event.preventDefault(); card.classList.add('drag-over'); } });
-    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
-    card.addEventListener('dragend', () => { dragged = undefined; document.querySelectorAll('.drag-over').forEach(element => element.classList.remove('drag-over')); });
-    card.addEventListener('drop', event => { if (dragged === undefined || filter.value) return; event.preventDefault(); moveGalleryItem(dragged, Number(card.dataset.galleryIndex)); dragged = undefined; });
-  });
+    return `<article class="image-card gallery-photo"><label class="gallery-photo-hit"><img src="${esc(safeImageUrl(media || { url: '' }))}" alt="${esc(item.title || 'Untitled')}" loading="lazy" draggable="false">
+      <input class="gallery-photo-check" type="checkbox" value="${esc(item.mediaId)}" aria-label="Select ${esc(item.title || 'Untitled')}">
+      <span class="gallery-photo-details"><strong>${esc(item.title || 'Untitled')}</strong>${[item.location, item.date?.slice(0, 10), (item.albums || []).join(' · ')].filter(Boolean).map(detail => `<small>${esc(detail)}</small>`).join('')}</span></label></article>`;
+  }).join('') || '<div class="empty">Upload photos or choose from your library to begin.</div>';
+  document.querySelectorAll('#gallery-grid .gallery-photo-check').forEach(input => input.addEventListener('change', () => {
+    if (input.checked) state.gallerySelection.add(input.value); else state.gallerySelection.delete(input.value); updateGalleryToolbar();
+  }));
+  updateGalleryStatus(); updateGalleryToolbar();
 }
-function moveGalleryItem(from, to) {
-  if (to < 0 || to >= state.gallery.items.length || from === to) return;
-  const [item] = state.gallery.items.splice(from, 1); state.gallery.items.splice(to, 0, item); galleryChanged(); renderGallery();
+function moveGallerySelection(direction) {
+  const items = state.gallery.items;
+  for (let step = 0; step < items.length; step++) {
+    const index = direction < 0 ? step : items.length - 1 - step; const neighbor = index + direction;
+    if (items[neighbor] && state.gallerySelection.has(items[index].mediaId) && !state.gallerySelection.has(items[neighbor].mediaId)) [items[index], items[neighbor]] = [items[neighbor], items[index]];
+  }
+  galleryChanged(); renderGallery();
+}
+function editGallerySelection() {
+  const ids = new Set(state.gallerySelection);
+  if (ids.size === 1) return editGalleryItem(state.gallery.items.findIndex(item => ids.has(item.mediaId)));
+  openDialog(`Edit ${ids.size} photographs`, `<form id="gallery-batch-details" class="stack"><p class="muted">Only checked fields will change. Each photograph keeps its other details and camera metadata.</p>
+    ${[['Title', 'title', 'text', 200], ['Caption', 'description', 'textarea', 2000], ['Location', 'location', 'text', 200], ['Date', 'date', 'date']].map(([label, name, type, limit]) =>
+      `<div class="gallery-batch-field"><label class="check"><input type="checkbox" name="change-${name}">Change ${label.toLowerCase()}</label><label class="field"><span class="sr-only">${label}</span>${type === 'textarea' ? `<textarea name="${name}" maxlength="${limit}" disabled></textarea>` : `<input name="${name}" type="${type}" ${limit ? `maxlength="${limit}"` : ''} disabled>`}</label></div>`).join('')}
+    <p class="form-error" role="alert"></p><button class="primary" type="submit">Apply details</button></form>`);
+  modal.querySelectorAll('[type=checkbox]').forEach(input => input.addEventListener('change', () => { modal.querySelector(`[name="${input.name.slice(7)}"]`).disabled = !input.checked; }));
+  bindForm('#gallery-batch-details', async values => {
+    const changes = {};
+    ['title', 'description', 'location', 'date'].forEach(name => { if (values.has(`change-${name}`)) changes[name] = values.get(name); });
+    if (!Object.keys(changes).length) throw new Error('Choose at least one field to change.');
+    state.gallery.items.forEach(item => { if (ids.has(item.mediaId)) Object.assign(item, changes); }); galleryChanged(); modal.close(); renderGallery();
+  }, modal);
+}
+function galleryAlbumsDialog() {
+  const ids = new Set(state.gallerySelection); const albums = [...new Set(state.gallery.items.flatMap(item => item.albums || []))].sort();
+  openDialog('Change albums', `<form id="gallery-album-details" class="stack"><p class="muted">Apply to ${ids.size} selected ${ids.size === 1 ? 'photograph' : 'photographs'}. Photos can belong to any number of albums, including none.</p>
+    <label class="field">Album action<select name="operation" aria-label="Album action"><option value="add">Add to albums</option><option value="replace">Replace albums</option><option value="remove">Remove from albums</option></select></label>
+    <div class="gallery-album-options">${albums.map(album => `<label class="check"><input type="checkbox" name="album" value="${esc(album)}">${esc(album)}</label>`).join('')}</div>
+    ${field('New albums', 'new-albums', '', 'placeholder="Travel, Landscapes"')}<p class="muted">Choose Replace albums with no albums selected to clear all assignments.</p>
+    <p class="form-error" role="alert"></p><button class="primary" type="submit">Apply albums</button></form>`);
+  bindForm('#gallery-album-details', async values => {
+    const chosen = [...new Set([...values.getAll('album'), ...String(values.get('new-albums')).split(',').map(album => album.trim()).filter(Boolean)])];
+    const operation = values.get('operation');
+    if (!chosen.length && operation !== 'replace') throw new Error('Choose an album or enter a new album name.');
+    const changes = state.gallery.items.filter(item => ids.has(item.mediaId)).map(item => ({ item, albums: operation === 'replace' ? chosen : operation === 'remove' ? (item.albums || []).filter(album => !chosen.includes(album)) : [...new Set([...(item.albums || []), ...chosen])] }));
+    if (changes.some(change => change.albums.length > 30 || change.albums.some(album => album.length > 80))) throw new Error('Use at most 30 albums per photograph, with names up to 80 characters.');
+    changes.forEach(change => { change.item.albums = [...change.albums]; }); galleryChanged(); modal.close(); renderGallery();
+  }, modal);
 }
 function editGalleryItem(index) {
   const item = state.gallery.items[index];

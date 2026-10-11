@@ -73,9 +73,10 @@ test('real admin bootstrap, MFA, Unicode editing, upload, preview, publication, 
     finally { await anonymous.close(); }
 
     await page.getByRole('button', { name: 'Photo gallery', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Curate the gallery.' })).toBeVisible();
-    await page.getByRole('button', { name: 'Add images', exact: true }).click(); await page.getByRole('button', { name: 'Choose library image' }).click();
-    await page.getByRole('dialog').locator('.image-card').filter({ hasText: `${tag}.jpg` }).getByRole('button', { name: 'Select image' }).click();
-    const added = page.locator('#gallery-grid .image-card').filter({ hasText: tag }); await added.getByRole('button', { name: 'Edit details' }).click();
+    await page.getByRole('button', { name: 'Choose library photos', exact: true }).click();
+    await page.getByRole('dialog').getByRole('checkbox', { name: `Select ${tag}.jpg`, exact: true }).check();
+    await page.getByRole('button', { name: 'Add selected photographs', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit selected photographs', exact: true }).click();
     await page.getByRole('dialog').getByLabel('Caption', { exact: true }).fill('Live integration photograph.');
     await page.getByRole('dialog').getByLabel('Albums', { exact: true }).fill('Integration');
     await page.getByRole('button', { name: 'Apply details' }).click(); await page.getByRole('button', { name: 'Save draft', exact: true }).click();

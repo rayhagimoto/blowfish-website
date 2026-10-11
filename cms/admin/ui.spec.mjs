@@ -163,9 +163,10 @@ test('autosave conflicts preserve browser edits and pause further writes', async
 
 test('gallery order, caption, albums, and metadata persist as an explicit draft', async ({ page }, testInfo) => {
   const data = fixture(); await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
-  await page.getByRole('button', { name: 'Move Blue hour up' }).click();
+  await page.getByRole('checkbox', { name: 'Select Blue hour', exact: true }).check();
+  await page.getByRole('button', { name: 'Move selected photographs up' }).click();
   await expect(page.locator('#gallery-grid .image-card').first()).toContainText('Blue hour');
-  await page.getByRole('button', { name: 'Edit details' }).first().click(); await page.getByLabel('Title', { exact: true }).fill('Dusk');
+  await page.getByRole('button', { name: 'Edit selected photographs' }).click(); await page.getByLabel('Title', { exact: true }).fill('Dusk');
   await page.getByLabel('Caption', { exact: true }).fill('The light at dusk.'); await page.getByLabel('Albums', { exact: true }).fill('Evening, Travel');
   await page.getByRole('button', { name: 'Apply details' }).click(); await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   expect(data.writes.at(-1).items[0]).toMatchObject({ mediaId: 'image-two', title: 'Dusk', description: 'The light at dusk.', albums: ['Evening', 'Travel'] });
@@ -176,11 +177,11 @@ test('gallery order, caption, albums, and metadata persist as an explicit draft'
 test('large gallery uploads preserve camera metadata before browser compression', async ({ page }) => {
   const data = fixture(); await mock(page, data); await page.goto('/admin/');
   await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
-  await page.getByRole('button', { name: 'Add images', exact: true }).click();
+  const choosing = page.waitForEvent('filechooser'); await page.getByRole('button', { name: 'Upload photos', exact: true }).click();
+  await choosing;
   await page.locator('#gallery-files').setInputFiles('assets/img/gallery/0000.jpg');
-  await expect(page.locator('#gallery-upload-status')).toContainText('Uploads added');
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit details', exact: true }).last().click();
+  await expect(page.locator('#gallery-upload-status')).toContainText('1 photograph added');
+  await page.getByRole('button', { name: 'Edit selected photographs', exact: true }).click();
   await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-02-23');
   const metadata = JSON.parse(await page.locator('#gallery-details textarea[name="metadata"]').inputValue());
   expect(metadata).toMatchObject({ camera: 'ILCE-7M3', lens: '24-70mm F2.8 DG DN | Art 019', iso: 100, shutter_speed: '1/6 s', aperture: 'f/2.8', focal_length: '70 mm' });
@@ -194,10 +195,10 @@ test('library images keep extracted location and settings after reload, with edi
     metadata: { location: 'Kyoto, Japan', date: '2026-02-23', camera: 'Sony', iso: 400 } });
   await mock(page, data); await page.goto('/admin/'); await page.reload();
   await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
-  await page.getByRole('button', { name: 'Add images', exact: true }).click();
-  await page.getByRole('button', { name: 'Choose library image', exact: true }).click();
-  await page.getByRole('button', { name: 'Select image', exact: true }).last().click();
-  await page.getByRole('button', { name: 'Edit details', exact: true }).last().click();
+  await page.getByRole('button', { name: 'Choose library photos', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Select Photo.jpg', exact: true }).check();
+  await page.getByRole('button', { name: 'Add selected photographs', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit selected photographs', exact: true }).click();
   await expect(page.getByLabel('Location', { exact: true })).toHaveValue('Kyoto, Japan');
   await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-02-23');
   await page.getByLabel('Location', { exact: true }).fill('Fushimi Inari, Kyoto');
@@ -211,6 +212,9 @@ test('mobile studio layout fits its viewport', async ({ page }, testInfo) => {
   const data = fixture(); await mock(page, data); await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/admin/');
   await page.getByRole('button', { name: 'Photo gallery', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Curate the gallery.' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const cards = page.locator('#gallery-grid .gallery-photo');
+  const first = await cards.nth(0).boundingBox(); const second = await cards.nth(1).boundingBox();
+  expect(first.y).toBe(second.y); expect(second.x).toBeGreaterThan(first.x);
   await page.screenshot({ path: testInfo.outputPath('studio-mobile.png'), fullPage: true });
 });
 
@@ -242,4 +246,111 @@ test('an editor asset failure preserves Markdown and leaves a working draft down
   const downloading = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download Markdown', exact: true }).click();
   const download = await downloading; const markdown = await readFile(await download.path(), 'utf8');
   expect(markdown).toContain('Hello κόσμε'); expect(markdown).toContain('title: "A field note"');
+});
+
+test('gallery batch edits change only opted-in fields and removal keeps library originals', async ({ page }) => {
+  const data = fixture(); data.gallery.items[0].metadata = { iso: 100, camera: 'Sony' }; data.gallery.items[1].metadata = { iso: 400 };
+  await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  const edit = page.getByRole('button', { name: 'Edit selected photographs', exact: true }); const remove = page.getByRole('button', { name: 'Remove selected photographs from gallery', exact: true });
+  await expect(edit).toBeDisabled(); await expect(remove).toBeDisabled();
+  await expect(page.locator('#gallery-grid button')).toHaveCount(0);
+  await page.getByRole('checkbox', { name: 'Select all visible photographs', exact: true }).check();
+  await expect(page.locator('#gallery-selection-count')).toHaveText('2 selected');
+  await edit.click(); await expect(page.getByLabel('Title', { exact: true })).toBeDisabled();
+  await page.getByRole('checkbox', { name: 'Change location', exact: true }).check(); await page.getByLabel('Location', { exact: true }).fill('Chicago, IL');
+  await page.getByRole('button', { name: 'Apply details', exact: true }).click(); await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  expect(data.writes.at(-1).items).toMatchObject([{ title: 'Alpine light', location: 'Chicago, IL', albums: ['Mountains'], metadata: { iso: 100, camera: 'Sony' } }, { title: 'Blue hour', location: 'Chicago, IL', albums: [], metadata: { iso: 400 } }]);
+  await remove.click(); await expect(page.locator('#gallery-grid .gallery-photo')).toHaveCount(0); await expect(remove).toBeDisabled();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click(); expect(data.writes.at(-1).items).toEqual([]); expect(data.media).toHaveLength(2);
+  await page.getByRole('button', { name: 'Choose library photos', exact: true }).click(); await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(2);
+});
+
+test('gallery albums support batches, clearing assignments, and safe filter selection', async ({ page }) => {
+  const data = fixture(); await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Select all visible photographs', exact: true }).check();
+  const albums = page.getByRole('button', { name: 'Change albums for selected photographs', exact: true }); await albums.click();
+  await page.getByLabel('New albums', { exact: true }).fill('Travel, Travel'); await page.getByRole('button', { name: 'Apply albums', exact: true }).click();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click(); expect(data.writes.at(-1).items.map(item => item.albums)).toEqual([['Mountains', 'Travel'], ['Travel']]);
+  await page.getByLabel('Album', { exact: true }).selectOption('Mountains'); await expect(page.locator('#gallery-selection-count')).toHaveText('Select photos'); await expect(albums).toBeDisabled();
+  await page.getByRole('checkbox', { name: 'Select Alpine light', exact: true }).check();
+  await expect(page.getByRole('button', { name: 'Move selected photographs down' })).toBeDisabled();
+  await albums.click(); await page.getByLabel('Album action', { exact: true }).selectOption('remove'); await page.getByRole('checkbox', { name: 'Mountains', exact: true }).check();
+  await page.getByRole('button', { name: 'Apply albums', exact: true }).click();
+  await expect(page.locator('#gallery-selection-count')).toHaveText('Select photos'); await expect(page.getByLabel('Album', { exact: true })).toHaveValue('');
+  await page.getByRole('checkbox', { name: 'Select all visible photographs', exact: true }).check(); await albums.click();
+  await page.getByLabel('Album action', { exact: true }).selectOption('replace'); await page.getByRole('button', { name: 'Apply albums', exact: true }).click();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click(); expect(data.writes.at(-1).items.map(item => item.albums)).toEqual([[], []]);
+});
+
+test('batch reorder preserves selected photo order and library picker adds several together', async ({ page }) => {
+  const data = fixture();
+  for (const [id, title] of [['image-three', 'Third photo'], ['image-four', 'Fourth photo']]) {
+    data.media.push({ id, filename: `${title}.jpg`, url: `/media/${id}.webp`, metadata: { iso: 800 } });
+  }
+  await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose library photos', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Add selected photographs', exact: true })).toBeDisabled();
+  await page.getByRole('checkbox', { name: 'Select Third photo.jpg', exact: true }).check(); await page.getByRole('checkbox', { name: 'Select Fourth photo.jpg', exact: true }).check();
+  await expect(page.locator('#gallery-grid .gallery-photo')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Add selected photographs', exact: true }).click(); await expect(page.locator('#gallery-selection-count')).toHaveText('2 selected');
+  await page.getByRole('button', { name: 'Move selected photographs up', exact: true }).click();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click(); expect(data.writes.at(-1).items.map(item => item.mediaId)).toEqual(['image-one', 'image-three', 'image-four', 'image-two']);
+  await page.getByRole('button', { name: 'Move selected photographs down', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Move selected photographs down', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click(); expect(data.writes.at(-1).items.map(item => item.mediaId)).toEqual(['image-one', 'image-two', 'image-three', 'image-four']);
+});
+
+test('gallery drops upload a batch without albums and keep successes when a file is unsupported', async ({ page }) => {
+  const data = fixture(); data.uploadMetadata = { location: 'Kyoto', date: '2026-02-23', iso: 400 };
+  await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  await page.getByLabel('Album', { exact: true }).selectOption('Mountains');
+  await page.locator('#gallery-workspace').evaluate(element => {
+    const transfer = new DataTransfer();
+    for (const name of ['first.png', 'unsupported.txt', 'second.png']) transfer.items.add(new File([new Uint8Array([137, 80, 78, 71])], name, { type: name.endsWith('.png') ? 'image/png' : 'text/plain' }));
+    element.dispatchEvent(new DragEvent('dragenter', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+    if (!element.classList.contains('drag-over')) throw new Error('No upload affordance during file drag.');
+    element.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+  });
+  await expect(page.locator('#gallery-upload-status')).toContainText('2 photographs added'); await expect(page.locator('#gallery-upload-status')).toContainText('1 upload(s) failed');
+  await expect(page.locator('#gallery-workspace')).not.toHaveClass(/drag-over/); await expect(page.getByLabel('Album', { exact: true })).toHaveValue('');
+  await expect(page.locator('#gallery-selection-count')).toHaveText('2 selected'); await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  expect(data.uploads).toHaveLength(2); expect(data.writes.at(-1).items.slice(-2)).toMatchObject([{ albums: [], location: 'Kyoto', date: '2026-02-23', metadata: { iso: 400 } }, { albums: [], location: 'Kyoto', date: '2026-02-23', metadata: { iso: 400 } }]);
+});
+
+test('photo grid reveals details on hover and keeps icon actions and mobile photos compact', async ({ page }, testInfo) => {
+  const data = fixture(); const names = ['Chicago Loop', 'Roosevelt Rd', 'Roosevelt Station', 'Roosevelt Station', 'Ceres', 'Grant Park', 'Aoba Castle', 'Lake Michigan', 'Ikebukuro', 'Night train', 'Shinjuku', 'JR Hokkaido'];
+  data.media = names.map((name, index) => ({ id: `photo-${index}`, filename: `${name}.jpg`, url: `/media/photo-${index}.webp` }));
+  data.gallery.items = data.media.map((media, index) => ({ mediaId: media.id, title: names[index], description: '', location: index < 6 ? 'Chicago, IL' : 'Japan', date: '', albums: index < 6 ? ['Chicago'] : ['Japan'], metadata: {} }));
+  await mock(page, data);
+  const { default: sharp } = await import('sharp');
+  const photos = await Promise.all(names.map((_, index) => sharp(`assets/img/gallery/${String(index).padStart(4, '0')}.jpg`).resize(600).jpeg().toBuffer()));
+  await page.route('**/media/photo-*.webp', route => route.fulfill({ contentType: 'image/jpeg', body: photos[Number(new URL(route.request().url()).pathname.match(/photo-(\d+)/)[1])] }));
+  await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).click(); await page.mouse.move(0, 0);
+  const cards = page.locator('#gallery-grid .gallery-photo'); const details = cards.first().locator('.gallery-photo-details');
+  await expect(details).toHaveCSS('opacity', '0'); await cards.first().hover(); await expect(details).toHaveCSS('opacity', '1');
+  await cards.first().click(); await expect(cards.first().getByRole('checkbox')).toBeChecked(); await expect(page.getByRole('dialog')).not.toBeVisible();
+  await page.getByRole('checkbox', { name: 'Select Roosevelt Rd', exact: true }).check(); await page.mouse.move(0, 0);
+  await expect(details).toHaveCSS('opacity', '0'); await expect(page.locator('#gallery-edit svg')).toBeVisible(); await expect(page.locator('#gallery-edit')).toHaveCSS('border-top-width', '0px');
+  await expect.poll(() => cards.locator('img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0))).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('gallery-desktop.png'), fullPage: true, animations: 'disabled' });
+  await cards.first().hover(); await page.screenshot({ path: testInfo.outputPath('gallery-hover.png'), fullPage: true, animations: 'disabled' });
+  await page.setViewportSize({ width: 390, height: 844 }); await page.mouse.move(0, 0);
+  const first = await cards.nth(0).boundingBox(); const second = await cards.nth(1).boundingBox(); expect(first.y).toBe(second.y); expect(second.x).toBeGreaterThan(first.x);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('gallery-mobile.png'), fullPage: true, animations: 'disabled' });
+  await page.getByRole('button', { name: 'Change albums for selected photographs', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible(); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test.describe('touch gallery', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  test('selection reveals photo details and single removal leaves other images intact', async ({ page }) => {
+    const data = fixture(); await mock(page, data); await page.goto('/admin/'); await page.getByRole('button', { name: 'Photo gallery', exact: true }).tap();
+    const card = page.locator('#gallery-grid .gallery-photo').first();
+    await expect(card.locator('.gallery-photo-details')).toHaveCSS('opacity', '0'); await card.tap();
+    await expect(card.getByRole('checkbox')).toBeChecked(); await expect(card.locator('.gallery-photo-details')).toHaveCSS('opacity', '1');
+    await page.getByRole('button', { name: 'Remove selected photographs from gallery', exact: true }).tap();
+    await expect(page.locator('#gallery-grid .gallery-photo')).toHaveCount(1); await expect(page.locator('#gallery-grid')).toContainText('Blue hour');
+    await page.getByRole('button', { name: 'Save draft', exact: true }).tap(); expect(data.writes.at(-1).items.map(item => item.mediaId)).toEqual(['image-two']);
+  });
 });
