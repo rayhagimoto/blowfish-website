@@ -1,0 +1,1 @@
+ALTER TABLE cms.media ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}';

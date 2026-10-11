@@ -29,7 +29,8 @@ async function mock(page, data) {
     if (path === '/api/cms/posts/post-one') { if (data.slowPost) await new Promise(resolve => setTimeout(resolve, 300)); return send({ post: data.post }); }
     if (path === '/api/cms/preview') return send({ html: data.preview });
     if (path === '/api/cms/media' && request.method() === 'POST') {
-      data.uploads.push(request.postData()); const media = { id: `uploaded-${data.uploads.length}`, filename: 'clipboard.webp', url: `/media/uploaded-${data.uploads.length}.webp`, width: 100, height: 100, size: 1024 };
+      data.uploads.push(request.postData()); const preserved = request.postData().match(/name="metadata"\r\n\r\n([^\r]*)/);
+      const media = { id: `uploaded-${data.uploads.length}`, filename: 'clipboard.webp', url: `/media/uploaded-${data.uploads.length}.webp`, width: 100, height: 100, size: 1024, metadata: preserved ? JSON.parse(preserved[1]) : data.uploadMetadata || {} };
       data.media.push(media); return send({ media });
     }
     if (path === '/api/cms/media') return send({ media: data.media });
@@ -170,6 +171,40 @@ test('gallery order, caption, albums, and metadata persist as an explicit draft'
   expect(data.writes.at(-1).items[0]).toMatchObject({ mediaId: 'image-two', title: 'Dusk', description: 'The light at dusk.', albums: ['Evening', 'Travel'] });
   await page.screenshot({ path: testInfo.outputPath('studio-desktop.png'), fullPage: true });
   await page.getByLabel('Album', { exact: true }).selectOption('Evening'); await expect(page.locator('#gallery-grid .image-card')).toHaveCount(1);
+});
+
+test('large gallery uploads preserve camera metadata before browser compression', async ({ page }) => {
+  const data = fixture(); await mock(page, data); await page.goto('/admin/');
+  await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  await page.getByRole('button', { name: 'Add images', exact: true }).click();
+  await page.locator('#gallery-files').setInputFiles('assets/img/gallery/0000.jpg');
+  await expect(page.locator('#gallery-upload-status')).toContainText('Uploads added');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit details', exact: true }).last().click();
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-02-23');
+  const metadata = JSON.parse(await page.locator('#gallery-details textarea[name="metadata"]').inputValue());
+  expect(metadata).toMatchObject({ camera: 'ILCE-7M3', lens: '24-70mm F2.8 DG DN | Art 019', iso: 100, shutter_speed: '1/6 s', aperture: 'f/2.8', focal_length: '70 mm' });
+  await page.getByRole('button', { name: 'Apply details', exact: true }).click();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  expect(data.writes.at(-1).items.at(-1)).toMatchObject({ date: '2026-02-23', metadata });
+});
+
+test('library images keep extracted location and settings after reload, with editable gallery overrides', async ({ page }) => {
+  const data = fixture(); data.media.push({ id: 'exif-photo', filename: 'Photo.jpg', url: '/media/exif-photo.webp',
+    metadata: { location: 'Kyoto, Japan', date: '2026-02-23', camera: 'Sony', iso: 400 } });
+  await mock(page, data); await page.goto('/admin/'); await page.reload();
+  await page.getByRole('button', { name: 'Photo gallery', exact: true }).click();
+  await page.getByRole('button', { name: 'Add images', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose library image', exact: true }).click();
+  await page.getByRole('button', { name: 'Select image', exact: true }).last().click();
+  await page.getByRole('button', { name: 'Edit details', exact: true }).last().click();
+  await expect(page.getByLabel('Location', { exact: true })).toHaveValue('Kyoto, Japan');
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue('2026-02-23');
+  await page.getByLabel('Location', { exact: true }).fill('Fushimi Inari, Kyoto');
+  await page.getByRole('button', { name: 'Apply details', exact: true }).click();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  expect(data.writes.at(-1).items.at(-1)).toMatchObject({ location: 'Fushimi Inari, Kyoto', metadata: data.media.at(-1).metadata });
+  expect(data.media.at(-1).metadata.location).toBe('Kyoto, Japan');
 });
 
 test('mobile studio layout fits its viewport', async ({ page }, testInfo) => {

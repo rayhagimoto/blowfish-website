@@ -264,13 +264,14 @@ test('Hugo builds images with absent sidecars, titles only, or metadata only', a
     writeFileSync(join(fixture, 'layouts/_default/baseof.html'), '<!doctype html><html><body>{{ block "main" . }}{{ end }}</body></html>');
     writeFileSync(join(fixture, 'hugo.toml'), 'baseURL = "https://example.test/"\ntitle = "Test gallery"\n');
     writeFileSync(join(fixture, 'content/gallery/index.md'), '---\ntitle: Photography\ntype: gallery-overhaul\n---\n');
-    for (const id of ['00', '01', '02']) writeFileSync(join(fixture, `assets/img/gallery/${id}.webp`), preview);
+    for (const id of ['00', '01', '02', '03']) writeFileSync(join(fixture, `assets/img/gallery/${id}.webp`), preview);
     writeFileSync(join(fixture, 'assets/img/gallery/01.yaml'), 'title: Title only\n');
     writeFileSync(join(fixture, 'assets/img/gallery/02.yaml'), 'location: Metadata only\n');
+    writeFileSync(join(fixture, 'assets/img/gallery/03.yaml'), 'camera: CMS camera\nlens: CMS lens\niso: 400\nshutter_speed: 1/200 s\naperture: f/2.8\nfocal_length: 70 mm\ndate: "2026-02-23"\n');
     execFileSync(process.env.HUGO_BINARY || 'hugo', ['--source', fixture, '--cacheDir', join(fixture, 'cache')], { stdio: 'pipe' });
     const html = readFileSync(join(fixture, 'public/gallery/index.html'), 'utf8');
     const data = JSON.parse(html.match(/<script id="gallery-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
-    expect(data).toHaveLength(3);
+    expect(data).toHaveLength(4);
     const original = await sharp(readFileSync(join(fixture, 'public', data[0].original))).metadata();
     const source = await sharp(preview).metadata();
     expect(original.format).toBe('jpeg');
@@ -283,6 +284,7 @@ test('Hugo builds images with absent sidecars, titles only, or metadata only', a
     expect(data[2].title).toBe('');
     expect(data[2].caption).toContain('Metadata only');
     expect(data[2].caption).not.toContain('<h2');
+    for (const value of ['CMS camera', 'CMS lens', '400', '1/200 s', 'f/2.8', '70 mm', '2026-02-23']) expect(data[3].caption).toContain(value);
   } finally {
     rmSync(fixture, { recursive: true, force: true });
   }

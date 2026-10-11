@@ -23,13 +23,16 @@
     {{- with $info.date -}}
       {{- $metadata = $metadata | append (dict "label" "Taken" "value" .) -}}
     {{- end -}}
-    {{- range slice (dict "label" "Camera" "value" (default $tags.Model $info.camera)) (dict "label" "Lens" "value" (default $tags.LensModel $info.lens)) (dict "label" "ISO" "value" (default $tags.ISOSpeedRatings $tags.ISO)) -}}
+    {{- range slice (dict "label" "Camera" "value" (default $tags.Model $info.camera)) (dict "label" "Lens" "value" (default $tags.LensModel $info.lens)) (dict "label" "ISO" "value" (default (default $tags.ISOSpeedRatings $tags.ISO) $info.iso)) -}}
       {{- $field := . -}}
       {{- with .value -}}{{- $metadata = $metadata | append (dict "label" $field.label "value" .) -}}{{- end -}}
     {{- end -}}
-    {{- with $tags.ExposureTime -}}{{- $metadata = $metadata | append (dict "label" "Exposure" "value" (printf "%v s" .)) -}}{{- end -}}
-    {{- with $tags.FNumber -}}{{- $metadata = $metadata | append (dict "label" "Aperture" "value" (printf "f/%s" (partial "gallery-overhaul/number.html" .))) -}}{{- end -}}
-    {{- with $tags.FocalLength -}}{{- $metadata = $metadata | append (dict "label" "Focal length" "value" (printf "%s mm" (partial "gallery-overhaul/number.html" .))) -}}{{- end -}}
+    {{- if $info.shutter_speed -}}{{- $metadata = $metadata | append (dict "label" "Exposure" "value" $info.shutter_speed) -}}
+    {{- else -}}{{- with $tags.ExposureTime -}}{{- $metadata = $metadata | append (dict "label" "Exposure" "value" (printf "%v s" .)) -}}{{- end -}}{{- end -}}
+    {{- if $info.aperture -}}{{- $metadata = $metadata | append (dict "label" "Aperture" "value" $info.aperture) -}}
+    {{- else -}}{{- with $tags.FNumber -}}{{- $metadata = $metadata | append (dict "label" "Aperture" "value" (printf "f/%s" (partial "gallery-overhaul/number.html" .))) -}}{{- end -}}{{- end -}}
+    {{- if $info.focal_length -}}{{- $metadata = $metadata | append (dict "label" "Focal length" "value" $info.focal_length) -}}
+    {{- else -}}{{- with $tags.FocalLength -}}{{- $metadata = $metadata | append (dict "label" "Focal length" "value" (printf "%s mm" (partial "gallery-overhaul/number.html" .))) -}}{{- end -}}{{- end -}}
     {{- $original := $image -}}
     {{- if ne $image.MediaType.SubType "jpeg" -}}
       {{- $original = $image.Resize (printf "%dx jpg q95" $image.Width) -}}

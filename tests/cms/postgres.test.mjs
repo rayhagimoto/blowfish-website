@@ -79,7 +79,8 @@ test('real Postgres enforces CMS revisions, publication snapshots, gallery order
   });
 
   await t.test('valid image uploads are re-encoded and stay behind authorization', async () => {
-    const png = await sharp({ create: { width: 30, height: 20, channels: 3, background: 'red' } }).png().toBuffer();
+    const png = await sharp({ create: { width: 30, height: 20, channels: 3, background: 'red' } })
+      .withExif({ IFD0: { Model: 'Integration camera' }, IFD2: { DateTimeOriginal: '2026:02:23 23:00:00', ISOSpeedRatings: '400' } }).png().toBuffer();
     const form = new FormData();
     form.set('file', new File([png], filename, { type: 'image/png' }));
     const response = await handler(new Request(`${origin}/api/cms/media`, { method: 'POST', headers: { origin }, body: form }));
@@ -88,6 +89,10 @@ test('real Postgres enforces CMS revisions, publication snapshots, gallery order
     mediaId = result.media.id;
     const stored = (await db.query('SELECT * FROM cms.media WHERE id=$1', [mediaId])).rows[0];
     assert.equal(stored.content_type, 'image/webp');
+    assert.equal(stored.metadata.camera, 'Integration camera'); assert.equal(stored.metadata.date, '2026-02-23');
+    assert.equal(stored.metadata.iso, 400);
+    const library = (await request('/api/cms/media')).media.find(media => media.id === mediaId);
+    assert.deepEqual(library.metadata, result.media.metadata);
     assert.equal((await sharp(blobs.get(stored.object_key)).metadata()).format, 'webp');
     const image = await handler(new Request(`${origin}/media/${mediaId}.webp`));
     assert.equal(image.status, 200);

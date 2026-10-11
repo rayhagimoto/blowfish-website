@@ -4,11 +4,12 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { HttpError } from './http.mjs';
 import { transaction } from './db.mjs';
+import { extractPhotoMetadata, suppliedPhotoMetadata } from './photo-metadata.mjs';
 
 export const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 export const mediaJSON = (row) => ({ id: row.id, filename: row.filename,
   url: `/media/${row.id}.webp`, width: row.width, height: row.height, size: row.size,
-  legacyPath: row.legacy_path || undefined });
+  legacyPath: row.legacy_path || undefined, metadata: row.metadata || {} });
 
 export async function uploadImage(request, { db, storage, config }) {
   if (!request.headers.get('content-type')?.startsWith('multipart/form-data')) throw new HttpError(415, 'IMAGE_REQUIRED', 'Choose an image file.');
@@ -17,11 +18,16 @@ export async function uploadImage(request, { db, storage, config }) {
   const form = await new Request(request.url, { method: 'POST', headers: request.headers, body: bytes }).formData();
   const file = form.get('file');
   if (!file || typeof file.arrayBuffer !== 'function' || file.size < 1 || file.size > config.maxUploadBytes) throw new HttpError(413, 'IMAGE_TOO_LARGE', 'Choose an image smaller than 4 MB.');
-  let output, info;
+  let supplied;
+  try { supplied = suppliedPhotoMetadata(form.get('metadata')); }
+  catch { throw new HttpError(400, 'INVALID_METADATA', 'The photo metadata could not be read.'); }
+  let output, info, photoMetadata;
   try {
-    const image = sharp(Buffer.from(await file.arrayBuffer()), { limitInputPixels: 40_000_000, animated: false });
+    const input = Buffer.from(await file.arrayBuffer());
+    const image = sharp(input, { limitInputPixels: 40_000_000, animated: false });
     const metadata = await image.metadata();
     if (!['jpeg', 'png', 'webp'].includes(metadata.format) || (metadata.pages || 1) !== 1) throw new Error('Unsupported image');
+    photoMetadata = { ...supplied, ...await extractPhotoMetadata(input, metadata) };
     ({ data: output, info } = await image.rotate().resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true }).webp({ quality: 85 }).toBuffer({ resolveWithObject: true }));
   } catch { throw new HttpError(415, 'UNSUPPORTED_IMAGE', 'Upload a valid, still JPEG, PNG, or WebP image.'); }
   const id = randomUUID();
@@ -35,8 +41,8 @@ export async function uploadImage(request, { db, storage, config }) {
     written = true;
     await storage.set(key, output);
       const filename = path.basename(file.name || 'image').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 180) || 'image';
-      const result = await client.query('INSERT INTO cms.media (id,object_key,filename,content_type,size,width,height) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-        [id, key, filename, 'image/webp', output.length, info.width, info.height]);
+      const result = await client.query('INSERT INTO cms.media (id,object_key,filename,content_type,size,width,height,metadata) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb) RETURNING *',
+        [id, key, filename, 'image/webp', output.length, info.width, info.height, JSON.stringify(photoMetadata)]);
       return mediaJSON(result.rows[0]);
   }); } catch (error) {
     if (written) await transaction(db, async (client) => {

@@ -3,6 +3,7 @@ import { createAuthClient } from 'better-auth/client';
 import { twoFactorClient } from 'better-auth/client/plugins';
 import QRCode from 'qrcode';
 import katex from 'katex';
+import { extractPhotoMetadata } from '../photo-metadata.mjs';
 import './app.css';
 
 const OWNER = 'rayhagimoto@gmail.com';
@@ -430,7 +431,10 @@ async function prepareImage(file) {
 }
 async function uploadImage(file) {
   state.uploads++;
-  try { const upload = await prepareImage(file); const body = new FormData(); body.append('file', upload);
+  try {
+    const metadata = file.size > 3.8 * 1024 * 1024 && file.size <= 30 * 1024 * 1024 ? await extractPhotoMetadata(new Uint8Array(await file.arrayBuffer())) : null;
+    const upload = await prepareImage(file); const body = new FormData(); body.append('file', upload);
+    if (metadata) body.append('metadata', JSON.stringify(metadata));
     const { media } = await api('/media', { method: 'POST', body }); return media;
   } finally { state.uploads--; }
 }
@@ -506,7 +510,8 @@ function galleryChanged() { state.dirty = true; state.editVersion++; updateGalle
 function addGalleryMedia(media) {
   if (!media) return;
   if (state.gallery.items.some(item => item.mediaId === media.id)) { notice('This photograph is already in the gallery.'); return; }
-  state.gallery.items.push({ mediaId: media.id, title: markdownLabel(media.filename), description: '', location: '', date: '', albums: [], metadata: {} });
+  const metadata = structuredClone(media.metadata || {});
+  state.gallery.items.push({ mediaId: media.id, title: markdownLabel(media.filename), description: '', location: metadata.location || '', date: metadata.date || '', albums: [], metadata });
   galleryChanged(); renderGallery();
 }
 async function galleryAddDialog() {

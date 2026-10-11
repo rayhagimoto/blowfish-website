@@ -271,8 +271,8 @@ function uploadFixture({ budget = 512 * 1024 * 1024, used = 0, failInsert = fals
     if (sql.includes('AS bytes FROM cms.media')) return { rows: [{ bytes: used }] };
     if (sql.startsWith('INSERT INTO cms.media')) {
       if (failInsert) throw new Error('Simulated insert failure');
-      const [id, object_key, filename, content_type, size, width, height] = parameters;
-      inserted = { id, object_key, filename, content_type, size, width, height };
+      const [id, object_key, filename, content_type, size, width, height, metadata] = parameters;
+      inserted = { id, object_key, filename, content_type, size, width, height, metadata: JSON.parse(metadata) };
       return { rows: [inserted] };
     }
     if (sql.startsWith('SELECT object_key FROM cms.media')) return { rows: preserveCommitted && inserted ? [{ object_key: inserted.object_key }] : [] };
@@ -290,9 +290,10 @@ function uploadFixture({ budget = 512 * 1024 * 1024, used = 0, failInsert = fals
   };
 }
 
-function uploadRequest(bytes, { type = 'image/jpeg', name = 'photo.jpg' } = {}) {
+function uploadRequest(bytes, { type = 'image/jpeg', name = 'photo.jpg', metadata } = {}) {
   const form = new FormData();
   form.append('file', new File([bytes], name, { type }));
+  if (metadata !== undefined) form.append('metadata', metadata);
   return new Request(`${config.origin}/api/cms/media`, { method: 'POST', body: form });
 }
 
@@ -311,12 +312,14 @@ function oversizedPixelPNG() {
 
 test('image upload validates decoded content, converts safely, strips metadata and enforces its storage budget', async () => {
   const jpeg = await sharp({ create: { width: 20, height: 10, channels: 3, background: '#cc7700' } })
-    .withMetadata({ orientation: 6 }).withExif({ IFD0: { Artist: 'Private author metadata' } }).jpeg().toBuffer();
+    .withMetadata({ orientation: 6 }).withExif({ IFD0: { Artist: 'Private author metadata', Model: 'Fixture camera' }, IFD2: { DateTimeOriginal: '2026:02:23 23:00:00', FNumber: '28/10' } }).jpeg().toBuffer();
   const fixture = uploadFixture();
   const media = await uploadImage(uploadRequest(jpeg, { name: '../../private-photo.jpg', type: 'text/plain' }), fixture);
   assert.equal(media.filename, 'private-photo.jpg');
   assert.equal(media.width, 10);
   assert.equal(media.height, 20);
+  assert.equal(media.metadata.camera, 'Fixture camera'); assert.equal(media.metadata.date, '2026-02-23');
+  assert.equal(media.metadata.aperture, 'f/2.8'); assert.equal(media.metadata.Artist, undefined);
   assert.match(fixture.calls.set[0].key, /^cms\/[a-f0-9-]{36}\.webp$/);
   const converted = await sharp(fixture.calls.set[0].bytes).metadata();
   assert.equal(converted.format, 'webp');
@@ -357,6 +360,17 @@ test('image upload validates decoded content, converts safely, strips metadata a
   assert.equal(ambiguousCommit.calls.set.length, 1);
   assert.equal(ambiguousCommit.calls.delete.length, 0);
   assert.equal(ambiguousCommit.calls.sql.some(sql => sql.startsWith('SELECT object_key FROM cms.media') && sql.endsWith('FOR UPDATE')), true);
+});
+
+test('browser-compressed uploads persist extracted details and reject unbounded metadata', async () => {
+  const bytes = await sharp({ create: { width: 20, height: 10, channels: 3, background: 'red' } }).webp().toBuffer();
+  const metadata = { camera: 'Original camera', location: 'Kyoto, Japan', date: '2026-02-23', iso: 400 };
+  const fixture = uploadFixture();
+  const media = await uploadImage(uploadRequest(bytes, { type: 'image/webp', metadata: JSON.stringify(metadata) }), fixture);
+  assert.deepEqual(media.metadata, metadata);
+  const rejected = uploadFixture();
+  await assert.rejects(uploadImage(uploadRequest(bytes, { metadata: '{"camera":{"nested":"value"}}' }), rejected), error => error.status === 400);
+  assert.equal(rejected.calls.set.length, 0);
 });
 
 test('private legacy preview seeding strips metadata, respects the combined budget and preserves concurrently committed previews during cleanup', async () => {
