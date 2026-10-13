@@ -21,6 +21,8 @@ let lightbox;
 let opener;
 const observed = new WeakSet();
 const visible = new Set();
+const pendingReveals = new Set();
+let revealFrame;
 const preloadObserver = new IntersectionObserver(entries => {
   // Start visible previews first; the small margin warms only the next row or two.
   entries.filter(entry => entry.isIntersecting)
@@ -38,9 +40,23 @@ const revealObserver = new IntersectionObserver(entries => {
 
 function revealCard(card) {
   if (!visible.has(card) || !card.matches('.is-loaded, .image-error')) return;
-  card.classList.add('is-revealed');
-  revealObserver.unobserve(card);
-  visible.delete(card);
+  pendingReveals.add(card);
+  if (revealFrame) return;
+  // Group only previews ready in this frame; never wait for another download.
+  revealFrame = requestAnimationFrame(() => {
+    revealFrame = null;
+    const cards = [...pendingReveals]
+      .filter(card => card.isConnected && visible.has(card))
+      .map(card => ({ card, bounds: card.getBoundingClientRect() }))
+      .sort((a, b) => a.bounds.top - b.bounds.top || a.bounds.left - b.bounds.left);
+    pendingReveals.clear();
+    cards.forEach(({ card }, index) => {
+      card.style.setProperty('--reveal-delay', `${reducedMotion ? 0 : Math.min(index * 50, 100)}ms`);
+      card.classList.add('is-revealed');
+      revealObserver.unobserve(card);
+      visible.delete(card);
+    });
+  });
 }
 
 function loadPreview(card) {
@@ -224,6 +240,7 @@ filters.addEventListener('click', event => {
   preloadObserver.disconnect();
   revealObserver.disconnect();
   visible.clear();
+  pendingReveals.clear();
   grid.destroy();
   container.replaceChildren(...selected.slice(0, batchSize).map(createCard));
   shown = container.children.length;

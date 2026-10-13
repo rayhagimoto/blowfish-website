@@ -143,6 +143,28 @@ test('preloads only a short distance ahead and reveals offscreen previews on scr
   expect(photos.some(photo => requested.has(photo.original))).toBe(false);
 });
 
+test('a slow first preview does not hold back ready photographs', async ({ page }) => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  await page.route(/\/img\/gallery\/0000_[^/]+\.webp$/, async route => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.goto('/gallery/', { waitUntil: 'domcontentloaded' });
+    const first = page.locator('.gallery-card').first();
+    const second = page.locator('.gallery-card').nth(1);
+    await expect(second).toHaveClass(/is-revealed/);
+    await expect(second.locator('a')).toHaveCSS('opacity', '1');
+    await expect(first).not.toHaveClass(/is-revealed/);
+    release();
+    await expect(first).toHaveClass(/is-revealed/);
+    await expect(first.locator('a')).toHaveCSS('opacity', '1');
+  } finally {
+    release();
+  }
+});
+
 test('data saving loads only visible smaller previews and reduced motion skips the lift', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => Object.defineProperty(navigator, 'connection', { value: { saveData: true, effectiveType: '4g' } }));
@@ -150,6 +172,7 @@ test('data saving loads only visible smaller previews and reduced motion skips t
   const first = page.locator('.gallery-card').first();
   await expect(first.locator('a')).toHaveCSS('transition-duration', '0s');
   await expect(first.locator('a')).toHaveCSS('transform', 'none');
+  await expect(first.locator('img')).toHaveCSS('transform', 'none');
   expect(await first.locator('img').evaluate(image => image.srcset)).toBe('');
   expect(await first.locator('img').evaluate(image => image.naturalWidth)).toBe(480);
   const premature = await page.locator('.gallery-card').evaluateAll(cards => cards.filter(card =>
