@@ -15,15 +15,14 @@
         </div>
         <p class="photo-count"><span id="photo-count">{{ len $photos }}</span> photographs</p>
       </div>
-      <div id="photo-grid" class="photo-grid">
-        {{ range $index, $photo := first 12 $photos }}{{ partial "gallery-overhaul/card.html" (dict "photo" $photo "eager" (lt $index 3)) }}{{ end }}
-      </div>
+      <div id="photo-grid" class="photo-grid"></div>
       <div class="gallery-end">
         <button id="load-more" type="button" hidden>More photographs <span aria-hidden="true">↓</span></button>
       </div>
       <noscript>
+        <style>#photo-grid, .photography-gallery .gallery-end { display: none; }</style>
         <p class="fallback-notice">Open a photograph to view it in full size.</p>
-        <div class="photo-grid fallback-grid">{{ range after 12 $photos }}{{ partial "gallery-overhaul/card.html" (dict "photo" . "eager" false) }}{{ end }}</div>
+        <div class="photo-grid fallback-grid">{{ range $index, $photo := $photos }}{{ partial "gallery-overhaul/card.html" (dict "photo" $photo "eager" (lt $index 3)) }}{{ end }}</div>
       </noscript>
     </section>
   </article>

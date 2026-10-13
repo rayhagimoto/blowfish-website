@@ -1,7 +1,7 @@
 {{ $photo := .photo }}
 <figure class="gallery-card" data-photo-id="{{ $photo.id }}">
-  <a href="{{ $photo.original }}" class="gallery-link" aria-label="Open {{ $photo.alt }}" style="aspect-ratio: {{ $photo.width }} / {{ $photo.height }}; background-image: url('{{ $photo.preview | safeURL }}')">
-    <img src="{{ $photo.original }}" width="{{ $photo.width }}" height="{{ $photo.height }}" alt="{{ $photo.alt }}" loading="{{ if .eager }}eager{{ else }}lazy{{ end }}" decoding="async" {{ if .eager }}fetchpriority="high"{{ end }}>
+  <a href="{{ $photo.original }}" class="gallery-link" aria-label="Open {{ $photo.alt }}" style="aspect-ratio: {{ $photo.width }} / {{ $photo.height }}">
+    <img src="{{ $photo.thumbnail }}" srcset="{{ $photo.srcset }}" sizes="(max-width: 960px) calc((100vw - 64px) / 2), 400px" width="{{ $photo.width }}" height="{{ $photo.height }}" alt="{{ $photo.alt }}" loading="{{ if .eager }}eager{{ else }}lazy{{ end }}" decoding="async">
     {{ if or $photo.title $photo.location }}<span class="card-label" aria-hidden="true">{{ with $photo.title }}<strong>{{ . }}</strong>{{ end }}{{ with $photo.location }}<span>{{ . }}</span>{{ end }}</span>{{ end }}
   </a>
   {{ with $photo.caption }}<figcaption class="sr-only">{{ . | safeHTML }}</figcaption>{{ end }}

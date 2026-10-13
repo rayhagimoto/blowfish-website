@@ -15,20 +15,73 @@ const constrained = connection?.saveData || /(^|-)2g$/.test(connection?.effectiv
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const batchSize = 12;
 let selected = photos;
-let shown = container.children.length;
+let shown = 0;
 let grid;
 let lightbox;
 let opener;
+const observed = new WeakSet();
+const visible = new Set();
+const preloadObserver = new IntersectionObserver(entries => {
+  // Start visible previews first; the small margin warms only the next row or two.
+  entries.filter(entry => entry.isIntersecting)
+    .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+    .forEach(entry => loadPreview(entry.target));
+}, { rootMargin: constrained ? '0px' : '200px 0px 400px' });
+const revealObserver = new IntersectionObserver(entries => {
+  for (const entry of entries) {
+    if (entry.isIntersecting) {
+      visible.add(entry.target);
+      revealCard(entry.target);
+    } else visible.delete(entry.target);
+  }
+});
 
-function observeImage(card) {
+function revealCard(card) {
+  if (!visible.has(card) || !card.matches('.is-loaded, .image-error')) return;
+  card.classList.add('is-revealed');
+  revealObserver.unobserve(card);
+  visible.delete(card);
+}
+
+function loadPreview(card) {
+  preloadObserver.unobserve(card);
   const image = card.querySelector('img');
-  const loaded = () => card.classList.add('is-loaded');
-  if (image.complete && image.naturalWidth) loaded();
-  else image.addEventListener('load', loaded, { once: true });
-  image.addEventListener('error', () => {
+  if (image.hasAttribute('src')) return;
+  const loaded = async () => {
+    try {
+      await image.decode();
+    } catch {
+      // A resize can replace the candidate while decoding; its load event will retry.
+      return;
+    }
+    if (!card.isConnected) return;
+    image.removeEventListener('load', loaded);
+    image.removeEventListener('error', failed);
+    card.classList.add('is-loaded');
+    revealCard(card);
+  };
+  const failed = () => {
+    if (!card.isConnected) return;
+    image.removeEventListener('load', loaded);
     card.classList.add('image-error');
     card.querySelector('a').title = 'Preview unavailable. Open to try the full photograph.';
-  }, { once: true });
+    revealCard(card);
+  };
+  image.addEventListener('load', loaded);
+  image.addEventListener('error', failed, { once: true });
+  const bounds = card.getBoundingClientRect();
+  image.fetchPriority = bounds.top < innerHeight && bounds.bottom > 0 ? 'high' : 'low';
+  // Set the measured slot before srcset so the browser fetches one suitable size.
+  image.sizes = `${Math.ceil(bounds.width)}px`;
+  if (!constrained) image.srcset = image.dataset.srcset;
+  image.src = image.dataset.src;
+}
+
+function observeImage(card) {
+  if (observed.has(card)) return;
+  observed.add(card);
+  preloadObserver.observe(card);
+  revealObserver.observe(card);
 }
 
 function createCard(photo) {
@@ -40,14 +93,14 @@ function createCard(photo) {
   link.href = photo.original;
   link.setAttribute('aria-label', `Open ${photo.alt}`);
   link.style.aspectRatio = `${photo.width} / ${photo.height}`;
-  link.style.backgroundImage = `url("${photo.preview}")`;
   const image = new Image();
   image.alt = photo.alt;
   image.width = photo.width;
   image.height = photo.height;
-  image.loading = 'lazy';
   image.decoding = 'async';
-  image.src = photo.original;
+  image.setAttribute('data-grid-skip', 'true');
+  image.dataset.src = photo.thumbnail;
+  image.dataset.srcset = photo.srcset;
   link.append(image);
   if (photo.title || photo.location) {
     const label = document.createElement('span');
@@ -69,7 +122,6 @@ function createCard(photo) {
     caption.innerHTML = photo.caption;
     card.append(caption);
   }
-  observeImage(card);
   return card;
 }
 
@@ -101,6 +153,14 @@ function makeGrid() {
     if (shown >= selected.length) event.reachEnd();
     else appendBatch();
   });
+  // Observe only after masonry has positioned the cards, never in their temporary layout.
+  grid.on('renderComplete', () => {
+    for (const card of container.querySelectorAll('.gallery-card')) {
+      const image = card.querySelector('img');
+      if (image.hasAttribute('src')) image.sizes = `${Math.ceil(card.getBoundingClientRect().width)}px`;
+      observeImage(card);
+    }
+  });
   grid.renderItems();
 }
 
@@ -108,7 +168,9 @@ function makeLightbox() {
   lightbox?.destroy();
   const slides = selected.map(photo => ({
     ...photo,
-    msrc: photo.original,
+    // Responsive previews belong to the gallery; lightbox images use the original.
+    srcset: '',
+    msrc: photo.thumbnail,
   }));
   lightbox = new PhotoSwipeLightbox({
     dataSource: slides,
@@ -146,6 +208,11 @@ container.addEventListener('click', event => {
   lightbox.loadAndOpen(index);
 });
 
+container.addEventListener('focusin', event => {
+  const card = event.target.closest('.gallery-card');
+  if (card) loadPreview(card);
+});
+
 filters.addEventListener('click', event => {
   const button = event.target.closest('button');
   if (!button || button.getAttribute('aria-pressed') === 'true') return;
@@ -154,6 +221,9 @@ filters.addEventListener('click', event => {
   }
   selected = button.dataset.album
     ? photos.filter(photo => photo.albums.includes(button.dataset.album)) : photos;
+  preloadObserver.disconnect();
+  revealObserver.disconnect();
+  visible.clear();
   grid.destroy();
   container.replaceChildren(...selected.slice(0, batchSize).map(createCard));
   shown = container.children.length;
@@ -168,7 +238,9 @@ more.addEventListener('click', () => {
   requestAnimationFrame(() => container.querySelector(`[data-photo-id="${nextId}"] a`)?.focus({ preventScroll: true }));
 });
 
-container.querySelectorAll('.gallery-card').forEach(observeImage);
+container.classList.add('is-enhanced');
+container.replaceChildren(...selected.slice(0, batchSize).map(createCard));
+shown = container.children.length;
 makeLightbox();
 makeGrid();
 filters.hidden = false;

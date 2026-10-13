@@ -8,7 +8,7 @@ import sharp from 'sharp';
 async function ready(page) {
   await page.goto('/gallery/');
   await expect(page.locator('.album-filters')).toBeVisible();
-  await expect(page.locator('.gallery-card.is-loaded').first()).toBeVisible();
+  await expect(page.locator('.gallery-card.is-revealed').first()).toBeVisible();
 }
 
 async function collection(page) {
@@ -82,15 +82,122 @@ test('starts with a small batch and loads the lightbox library only when opened'
   expect(photos).toHaveLength(56);
   await expect(page.locator('.gallery-card')).toHaveCount(12);
   expect(requests.some(url => /photoswipe\.esm-/.test(url))).toBe(false);
-  expect(requests.some(url => new URL(url).pathname === photos[0].original)).toBe(true);
-  expect(requests.some(url => /\.webp(?:\?|$)/.test(url))).toBe(false);
+  expect(requests.some(url => photos.some(photo => new URL(url).pathname === photo.original))).toBe(false);
+  expect(requests.some(url => /\.webp(?:\?|$)/.test(url))).toBe(true);
   await page.locator('.gallery-link').first().click();
   await expect(page.locator('.pswp')).toBeVisible();
   expect(requests.some(url => /photoswipe\.esm-/.test(url))).toBe(true);
   expect(errors).toEqual([]);
 });
 
-test('native save and copy target full-resolution JPGs in cards and lightbox slides', async ({ page }) => {
+test('keeps previews invisible until decoded, then fades and lifts them without moving the layout', async ({ page }) => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  await page.route('**/*.webp', async route => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto('/gallery/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.gallery-card')).toHaveCount(12);
+  const card = page.locator('.gallery-card').first();
+  const link = card.locator('a');
+  await expect(card.locator('img')).toHaveAttribute('src', /\.webp$/);
+  await expect(link).toHaveCSS('opacity', '0');
+  await expect(link).toHaveCSS('background-image', 'none');
+  expect(await page.locator('.is-revealed')).toHaveCount(0);
+  const before = await card.boundingBox();
+  release();
+  await expect(card).toHaveClass(/is-revealed/);
+  await expect(link).toHaveCSS('opacity', '1');
+  await expect(link).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+  expect(await card.boundingBox()).toEqual(before);
+  expect(await card.locator('img').evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+});
+
+test('preloads only a short distance ahead and reveals offscreen previews on scroll', async ({ page }) => {
+  const requested = new Set();
+  page.on('request', request => requested.add(new URL(request.url()).pathname));
+  await ready(page);
+  const photos = await collection(page);
+  const cards = await page.locator('.gallery-card').evaluateAll(cards => cards.map(card => ({
+    id: card.dataset.photoId,
+    top: card.getBoundingClientRect().top,
+    bottom: card.getBoundingClientRect().bottom,
+    source: card.querySelector('img').getAttribute('src'),
+  })));
+  const distant = cards.find(card => card.top > 1400);
+  expect(distant).toBeTruthy();
+  expect(distant.source).toBeNull();
+  const photo = photos.find(photo => photo.id === distant.id);
+  const variants = photo.srcset.split(', ').map(source => source.split(' ')[0]);
+  expect(variants.some(source => requested.has(source))).toBe(false);
+  const preloaded = cards.find(card => card.top > 1000 && card.top < 1400);
+  expect(preloaded).toBeTruthy();
+  const warmed = page.locator(`[data-photo-id="${preloaded.id}"]`);
+  await expect(warmed).toHaveClass(/is-loaded/);
+  await expect(warmed).not.toHaveClass(/is-revealed/);
+  await page.evaluate(top => window.scrollTo(0, top - 500), distant.top);
+  const revealed = page.locator(`[data-photo-id="${distant.id}"]`);
+  await expect(revealed).toHaveClass(/is-revealed/);
+  expect(variants.some(source => requested.has(source))).toBe(true);
+  expect(photos.some(photo => requested.has(photo.original))).toBe(false);
+});
+
+test('data saving loads only visible smaller previews and reduced motion skips the lift', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => Object.defineProperty(navigator, 'connection', { value: { saveData: true, effectiveType: '4g' } }));
+  await ready(page);
+  const first = page.locator('.gallery-card').first();
+  await expect(first.locator('a')).toHaveCSS('transition-duration', '0s');
+  await expect(first.locator('a')).toHaveCSS('transform', 'none');
+  expect(await first.locator('img').evaluate(image => image.srcset)).toBe('');
+  expect(await first.locator('img').evaluate(image => image.naturalWidth)).toBe(480);
+  const premature = await page.locator('.gallery-card').evaluateAll(cards => cards.filter(card =>
+    card.getBoundingClientRect().top > innerHeight && card.querySelector('img').hasAttribute('src')).length);
+  expect(premature).toBe(0);
+});
+
+test('failed previews reveal a usable link and can still open the original', async ({ page }) => {
+  await page.route('**/*.webp', route => route.abort());
+  await page.goto('/gallery/');
+  const card = page.locator('.gallery-card').first();
+  await expect(card).toHaveClass(/image-error/);
+  await expect(card).toHaveClass(/is-revealed/);
+  await expect(card.locator('a')).toHaveAttribute('title', /Preview unavailable/);
+  await card.locator('a').click();
+  await expect(page.locator('.pswp')).toBeVisible();
+  await expect.poll(() => page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)')
+    .evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+});
+
+test('resizing during a slow preview download still reveals the photo', async ({ browser }) => {
+  const context = await browser.newContext({ deviceScaleFactor: 2, viewport: { width: 320, height: 844 } });
+  const page = await context.newPage();
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  await page.route('**/*.webp', async route => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.goto('http://127.0.0.1:9099/gallery/', { waitUntil: 'domcontentloaded' });
+    const card = page.locator('.gallery-card').first();
+    const image = card.locator('img');
+    await expect(image).toHaveAttribute('src', /\.webp$/);
+    const before = await image.getAttribute('sizes');
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await expect(image).not.toHaveAttribute('sizes', before);
+    release();
+    await expect(card).toHaveClass(/is-loaded/);
+    await expect(card).toHaveClass(/is-revealed/);
+    await expect(card).not.toHaveClass(/image-error/);
+  } finally {
+    release();
+    await context.close();
+  }
+});
+
+test('cards use responsive previews and native save and copy in the lightbox target original JPGs', async ({ page }) => {
   await ready(page);
   const photos = await collection(page);
   const nativeImage = async (image, photo) => {
@@ -109,10 +216,16 @@ test('native save and copy target full-resolution JPGs in cards and lightbox sli
     await expect(page.locator('.photography-download-menu')).toHaveCount(0);
   };
 
-  await nativeImage(page.locator('.gallery-card img').first(), photos[0]);
+  const preview = page.locator('.gallery-card img').first();
+  await expect.poll(() => preview.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+  expect(new URL(await preview.evaluate(image => image.currentSrc)).pathname).not.toBe(photos[0].original);
+  expect(await preview.evaluate(image => image.naturalWidth)).toBeLessThanOrEqual(1200);
+  await expect(preview).toHaveAttribute('srcset', /480w.*800w.*1200w/);
+  await expect(page.locator('.gallery-link').first()).toHaveAttribute('href', photos[0].original);
   await page.getByRole('button', { name: 'Japan', exact: true }).click();
   const japan = photos.filter(photo => photo.albums.includes('Japan'));
-  await nativeImage(page.locator('.gallery-card img').nth(1), japan[1]);
+  await expect(page.locator('.gallery-link').nth(1)).toHaveAttribute('href', japan[1].original);
+  await expect.poll(() => page.locator('.gallery-card img').nth(1).evaluate(image => image.currentSrc)).toContain('.webp');
   await page.getByRole('button', { name: 'All photographs', exact: true }).click();
   await page.locator('.gallery-link').first().click();
   await expect(page.locator('.pswp')).toBeFocused();
@@ -127,22 +240,22 @@ test('navigates the entire collection, preloads both directions, zooms, and rest
   page.on('request', request => loaded.add(new URL(request.url()).pathname));
   await ready(page);
   const photos = await collection(page);
-  // Open within the first batch so both neighbors exist without wrapping.
-  const opener = page.locator('.gallery-link').nth(5);
+  // Open in the visible first row so clicking does not scroll and append another batch.
+  const opener = page.locator('.gallery-link').nth(2);
   await opener.click();
   await expect(page.locator('.pswp')).toBeFocused();
-  await expect(page.locator('.pswp__counter')).toHaveText('6 / 56');
-  await expect(page.locator('.pswp__item[aria-hidden="false"] .photo-title')).toHaveText(photos[5].title);
-  await expect.poll(() => [4, 6].every(index => loaded.has(photos[index].original))).toBe(true);
+  await expect(page.locator('.pswp__counter')).toHaveText('3 / 56');
+  await expect(page.locator('.pswp__item[aria-hidden="false"] .photo-title')).toHaveText(photos[2].title);
+  await expect.poll(() => [1, 3].every(index => loaded.has(photos[index].original))).toBe(true);
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('.pswp__counter')).toHaveText('5 / 56');
+  await expect(page.locator('.pswp__counter')).toHaveText('2 / 56');
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('.pswp__counter')).toHaveText('6 / 56');
+  await expect(page.locator('.pswp__counter')).toHaveText('3 / 56');
   const image = page.locator('.pswp__item[aria-hidden="false"] img:not(.pswp__img--placeholder)');
   const beforeZoom = await image.boundingBox();
   await page.getByRole('button', { name: 'Zoom photograph', exact: true }).click();
   await expect.poll(async () => (await image.boundingBox()).width).toBeGreaterThan(beforeZoom.width);
-  for (let index = 0; index < 9; index++) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 12; index++) await page.keyboard.press('ArrowRight');
   await expect(page.locator('.pswp__counter')).toHaveText('15 / 56');
   await expect(page.locator('.gallery-card')).toHaveCount(12);
   await page.keyboard.press('Escape');
@@ -235,8 +348,8 @@ test('all images and their captions remain available without JavaScript', async 
   await page.goto('http://127.0.0.1:9099/gallery/');
   await expect(page.locator('.gallery-card')).toHaveCount(56);
   await expect(page.locator('.gallery-link').first()).toHaveAttribute('href', /\/gallery\/originals\/.*\.jpg$/);
-  await expect(page.locator('.gallery-card img').first()).toHaveAttribute('src', /\/gallery\/originals\/.*\.jpg$/);
-  await expect(page.locator('.gallery-card img').first()).not.toHaveAttribute('srcset');
+  await expect(page.locator('.gallery-card img').first()).toHaveAttribute('src', /\.webp$/);
+  await expect(page.locator('.gallery-card img').first()).toHaveAttribute('srcset', /480w.*800w.*1200w/);
   const first = await page.locator('.gallery-card').first().boundingBox();
   const second = await page.locator('.gallery-card').nth(1).boundingBox();
   expect(second.x).toBeCloseTo(first.x + first.width + 16, 0);
@@ -277,6 +390,11 @@ test('Hugo builds images with absent sidecars, titles only, or metadata only', a
     expect(original.format).toBe('jpeg');
     expect(original.width).toBe(source.width);
     expect(original.height).toBe(source.height);
+    const thumbnail = await sharp(readFileSync(join(fixture, 'public', data[0].thumbnail))).metadata();
+    expect(thumbnail.format).toBe('webp');
+    expect(thumbnail.width).toBe(480);
+    expect(data[0].srcset).toMatch(/480w, .*640w$/);
+    expect(data[0].srcset.split(', ')).toHaveLength(2);
     expect(data[0].title).toBe('');
     expect(data[0].caption).toBe('');
     expect(data[1].caption).toContain('Title only');
